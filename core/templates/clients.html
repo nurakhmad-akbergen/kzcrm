@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Клиенты
+{% endblock %}
+
+{% block page_subtitle %}
+CRM база клиентов
+{% endblock %}
+
+{% block content %}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <table class="table table-striped">
+
+            <thead>
+                <tr>
+                    <th>Клиент</th>
+                    <th>Телефон</th>
+                    <th>Визитов</th>
+                    <th>Потратил</th>
+                    <th>Последний визит</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for client in clients %}
+
+                <tr>
+
+                    <td>
+                        <a href="/clients/{{ client.id }}/">
+                            <strong>{{ client.name }}</strong>
+                    </a>
+                    </td>
+
+                    <td>
+                        {{ client.phone }}
+                    </td>
+
+                    <td>
+                        {{ client.visits|default:0 }}
+                    </td>
+
+                    <td>
+                        {{ client.total_spent|default:0 }} ₸
+                    </td>
+
+                    <td>
+                        {% if client.last_visit %}
+                            {{ client.last_visit|date:"d.m.Y H:i" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                </tr>
+
+            {% empty %}
+
+                <tr>
+                    <td colspan="5" class="text-muted">
+                        Нет клиентов
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+</div>
+
+{% endblock %}

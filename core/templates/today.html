@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block page_title %}Расписание{% endblock %}
+{% block page_subtitle %}Сегодня: {{ today }} • Доход: {{ revenue }} ₸{% endblock %}
+
+{% block content %}
+
+{% if appointments %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Время</th>
+                    <th>Клиент</th>
+                    <th>Услуга</th>
+                    <th>Мастер</th>
+                    <th>Статус</th>
+                    <th style="width: 140px;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in appointments %}
+                <tr>
+                    <td class="fw-semibold">{{ a.start_at|date:"H:i" }}</td>
+                    <td>{{ a.client.name }}</td>
+                    <td>{{ a.service.name }}</td>
+                    <td>{{ a.barber.name }}</td>
+
+                    <td>
+                        {% if a.status == "DONE" %}
+                            <span class="badge bg-success">Пришел</span>
+                        {% elif a.status == "CANCELED" %}
+                            <span class="badge bg-danger">Отмена</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Записан</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if a.status != "DONE" %}
+                            <a href="{% url 'mark_done' a.id %}" class="btn btn-sm btn-outline-success">
+                                Пришел
+                            </a>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info shadow-sm">
+    Сегодня записей нет
+</div>
+{% endif %}
+
+{% endblock %}

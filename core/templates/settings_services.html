@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Услуги
+{% endblock %}
+
+{% block page_subtitle %}
+Управление услугами
+{% endblock %}
+
+{% block content %}
+
+<h3 class="mb-4">Услуги</h3>
+
+<div class="card mb-4">
+<div class="card-body">
+
+<h5 class="mb-3">Добавить услугу</h5>
+
+<form method="POST">
+{% csrf_token %}
+
+{{ form.as_p }}
+
+<button class="btn btn-success">
+Добавить услугу
+</button>
+
+</form>
+
+</div>
+</div>
+
+
+<div class="card">
+<div class="card-body">
+
+<h5 class="mb-3">Список услуг</h5>
+
+<ul class="list-group">
+
+{% for service in services %}
+
+<li class="list-group-item d-flex justify-content-between align-items-center">
+
+<div>
+<strong>{{ service.name }}</strong><br>
+<small class="text-muted">
+{{ service.price_kzt }} ₸ • {{ service.duration_min }} мин
+</small>
+</div>
+
+</li>
+
+{% empty %}
+
+<li class="list-group-item text-muted">
+Нет услуг
+</li>
+
+{% endfor %}
+
+</ul>
+
+</div>
+</div>
+
+{% endblock %}

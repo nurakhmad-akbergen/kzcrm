@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block page_title %}Финансы{% endblock %}
+{% block page_subtitle %}Финансовая аналитика{% endblock %}
+
+{% block content %}
+
+<!-- ФИЛЬТР -->
+<div class="card shadow-sm mb-4">
+<div class="card-body">
+
+<form method="GET" class="row g-3">
+
+<div class="col-md-4">
+<label class="form-label">Дата от</label>
+<input type="date"
+       name="date_from"
+       value="{{ date_from }}"
+       class="form-control">
+</div>
+
+<div class="col-md-4">
+<label class="form-label">Дата до</label>
+<input type="date"
+       name="date_to"
+       value="{{ date_to }}"
+       class="form-control">
+</div>
+
+<div class="col-md-4 d-flex align-items-end">
+<button class="btn btn-primary w-100">
+Применить фильтр
+</button>
+</div>
+
+</form>
+
+</div>
+</div>
+
+
+<!-- KPI СТАТИСТИКА -->
+<div class="row mb-4">
+
+<div class="col-md-3">
+<div class="card shadow-sm text-center">
+<div class="card-body">
+<h6 class="text-muted">Сегодня</h6>
+<h3>{{ today_total }} ₸</h3>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card shadow-sm text-center">
+<div class="card-body">
+<h6 class="text-muted">Неделя</h6>
+<h3>{{ week_total }} ₸</h3>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card shadow-sm text-center">
+<div class="card-body">
+<h6 class="text-muted">Месяц</h6>
+<h3>{{ month_total }} ₸</h3>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card shadow-sm text-center">
+<div class="card-body">
+<h6 class="text-muted">Средний чек</h6>
+<h3>{{ average_check }} ₸</h3>
+</div>
+</div>
+</div>
+
+</div>
+
+
+<!-- ГРАФИКИ -->
+<div class="row">
+
+<div class="col-md-8">
+<div class="card p-3 shadow-sm mb-4">
+<h5>Выручка по дням</h5>
+<canvas id="lineChart"></canvas>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card p-3 shadow-sm mb-4">
+<h5>Способы оплаты</h5>
+<canvas id="pieChart"></canvas>
+</div>
+</div>
+
+</div>
+
+
+<!-- ТОП МАСТЕР -->
+<div class="card shadow-sm">
+<div class="card-body">
+
+<h5>Лучший мастер</h5>
+
+{% if top_barber %}
+<p>
+{{ top_barber.appointment__barber__name }} —
+<strong>{{ top_barber.total }} ₸</strong>
+</p>
+{% else %}
+<p class="text-muted">Нет данных</p>
+{% endif %}
+
+</div>
+</div>
+
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function() {
+
+const dailyLabels = {{ daily_labels|safe }};
+const dailyTotals = {{ daily_totals|safe }};
+const methodLabels = {{ method_labels|safe }};
+const methodTotals = {{ method_totals|safe }};
+
+// LINE CHART
+new Chart(document.getElementById("lineChart"), {
+
+type: 'line',
+
+data: {
+labels: dailyLabels,
+datasets: [{
+label: 'Выручка',
+data: dailyTotals,
+borderWidth: 3,
+tension: 0.4,
+fill: false
+}]
+},
+
+options: {
+responsive: true,
+animation: {
+duration: 2000,
+easing: 'easeOutQuart'
+},
+plugins: {
+legend: { display: false }
+}
+}
+
+});
+
+// PIE CHART
+new Chart(document.getElementById("pieChart"), {
+
+type: 'pie',
+
+data: {
+labels: methodLabels,
+datasets: [{
+data: methodTotals
+}]
+},
+
+options: {
+responsive: true,
+animation: {
+duration: 2500,
+easing: 'easeOutBounce'
+}
+}
+
+});
+
+});
+
+</script>
+
+{% endblock %}

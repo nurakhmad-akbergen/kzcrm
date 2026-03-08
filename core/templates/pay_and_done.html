@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Оплата</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h3 class="mb-3">Отметить “Пришел”</h3>
+
+      <p class="mb-1"><strong>Клиент:</strong> {{ a.client.name }}</p>
+      <p class="mb-1"><strong>Мастер:</strong> {{ a.barber.name }}</p>
+      <p class="mb-3"><strong>Услуга:</strong> {{ a.service.name }} ({{ a.service.price_kzt }} ₸)</p>
+
+      <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Способ оплаты</label>
+          <select name="method" class="form-select">
+            {% for v, label in methods %}
+              <option value="{{ v }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button class="btn btn-success" type="submit">Подтвердить</button>
+        <a class="btn btn-secondary" href="/today/">Назад</a>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

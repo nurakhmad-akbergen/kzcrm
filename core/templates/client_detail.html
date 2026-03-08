@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+{{ client.name }}
+{% endblock %}
+
+{% block page_subtitle %}
+Карточка клиента
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+<div class="col-md-4">
+
+<div class="card shadow-sm mb-4">
+<div class="card-body">
+
+<h4>{{ client.name }}</h4>
+
+<p class="text-muted">
+📞 {{ client.phone }}
+</p>
+
+<hr>
+
+<h5>Потратил</h5>
+
+<h3 class="text-success">
+{{ total_spent }} ₸
+</h3>
+
+</div>
+</div>
+
+</div>
+
+
+<div class="col-md-8">
+
+<div class="card shadow-sm">
+<div class="card-body">
+
+<h5 class="mb-3">История визитов</h5>
+
+<table class="table">
+
+<thead>
+<tr>
+<th>Дата</th>
+<th>Мастер</th>
+<th>Услуга</th>
+<th>Цена</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for a in appointments %}
+
+<tr>
+
+<td>
+{{ a.start_at|date:"d.m.Y H:i" }}
+</td>
+
+<td>
+{{ a.barber.name }}
+</td>
+
+<td>
+{{ a.service.name }}
+</td>
+
+<td>
+{{ a.service.price_kzt }} ₸
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+<td colspan="4" class="text-muted">
+Нет визитов
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

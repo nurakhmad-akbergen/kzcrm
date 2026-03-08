@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Новая запись
+{% endblock %}
+
+{% block page_subtitle %}
+Создание записи
+{% endblock %}
+
+{% block content %}
+
+<div class="card shadow-sm">
+<div class="card-body">
+
+<h4 class="mb-4">Новая запись</h4>
+
+<form method="POST">
+{% csrf_token %}
+
+<div class="mb-3">
+<label class="form-label">Имя клиента</label>
+{{ form.client_name }}
+</div>
+
+<div class="mb-3">
+<label class="form-label">Телефон</label>
+{{ form.client_phone }}
+<div id="clientStatus" class="form-text"></div>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Мастер</label>
+{{ form.barber }}
+</div>
+
+<div class="mb-3">
+<label class="form-label">Услуга</label>
+{{ form.service }}
+</div>
+
+<div class="mb-3">
+<label class="form-label">Дата и время</label>
+{{ form.start_at }}
+</div>
+
+<div class="d-flex gap-2">
+
+<button class="btn btn-success">
+Создать запись
+</button>
+
+<a href="/today/" class="btn btn-secondary">
+Назад
+</a>
+
+</div>
+
+</form>
+
+</div>
+</div>
+
+<script>
+const phoneInput = document.querySelector("#id_client_phone");
+const nameInput = document.querySelector("#id_client_name");
+const statusDiv = document.getElementById("clientStatus");
+
+phoneInput.addEventListener("blur", function() {
+
+    const phone = phoneInput.value;
+
+    if (!phone) {
+        statusDiv.innerHTML = "";
+        return;
+    }
+
+    fetch(`/api/find-client/?phone=${phone}`)
+        .then(response => response.json())
+        .then(data => {
+
+            if (data.exists) {
+                nameInput.value = data.name;
+                statusDiv.innerHTML = "🟢 Клиент найден в базе";
+                statusDiv.className = "form-text text-success";
+            }
+
+            else {
+                statusDiv.innerHTML = "🔵 Новый клиент будет создан";
+                statusDiv.className = "form-text text-primary";
+            }
+
+        })
+
+        .catch(() => {
+            statusDiv.innerHTML = "";
+        });
+
+});
+</script>
+
+{% endblock %}
