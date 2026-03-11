@@ -1,5 +1,5 @@
 Django==3.2.16
-gunicorn
+gunicorn==21.2.0
 whitenoise
 psycopg2-binary
 python-dotenv
