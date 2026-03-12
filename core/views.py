@@ -110,11 +110,28 @@ def edit_barber(request, barber_id):
 
 @login_required
 def today_schedule(request):
+
     shop = request.user.shop
-    today = timezone.localdate()
+
+    date_str = request.GET.get("date")
+
+    if date_str:
+        day = parse_date(date_str)
+    else:
+        day = timezone.localdate()
+
+    # начало недели
+    week_start = day - timedelta(days=day.weekday())
+
+    # список дней недели
+    week_days = [
+        week_start + timedelta(days=i)
+        for i in range(7)
+    ]
 
     appointments = (
-        Appointment.objects.filter(shop=shop, start_at__date=today)
+        Appointment.objects
+        .filter(shop=shop, start_at__date=day)
         .select_related("client", "barber", "service")
         .order_by("start_at")
     )
@@ -122,7 +139,7 @@ def today_schedule(request):
     revenue = (
         Payment.objects.filter(
             appointment__shop=shop,
-            appointment__start_at__date=today,
+            appointment__start_at__date=day,
             is_paid=True
         )
         .aggregate(total=Sum("amount_kzt"))["total"]
@@ -131,8 +148,10 @@ def today_schedule(request):
 
     return render(request, "today.html", {
         "appointments": appointments,
-        "today": today,
-        "revenue": revenue,
+        "day": day,
+        "week_days": week_days,
+        "week_start": week_start,
+        "revenue": revenue
     })
     
     

@@ -1,11 +1,50 @@
 {% extends "base.html" %}
 
 {% block page_title %}Расписание{% endblock %}
-{% block page_subtitle %}Сегодня: {{ today }} • Доход: {{ revenue }} ₸{% endblock %}
+{% block page_subtitle %}День: {{ day }} • Доход: {{ revenue }} ₸{% endblock %}
 
 {% block content %}
 
+<!-- НЕДЕЛЯ ВСЕГДА ПОКАЗЫВАЕТСЯ -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <a href="?date={{ week_start|date:'Y-m-d'|add:'-7 days' }}"
+               class="btn btn-outline-secondary">
+                ←
+            </a>
+
+            <h5 class="m-0">
+                Неделя {{ week_start|date:"d M" }}
+            </h5>
+
+            <a href="?date={{ week_start|date:'Y-m-d'|add:'7 days' }}"
+               class="btn btn-outline-secondary">
+                →
+            </a>
+
+        </div>
+
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+
+            {% for d in week_days %}
+            <a href="?date={{ d|date:'Y-m-d' }}"
+               class="btn {% if d == day %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                {{ d|date:"D" }}<br>
+                <strong>{{ d|date:"d" }}</strong>
+            </a>
+            {% endfor %}
+
+        </div>
+
+    </div>
+</div>
+
+
 {% if appointments %}
+
 <div class="card shadow-sm">
     <div class="card-body">
         <table class="table align-middle">
@@ -52,10 +91,13 @@
         </table>
     </div>
 </div>
+
 {% else %}
+
 <div class="alert alert-info shadow-sm">
-    Сегодня записей нет
+    На {{ day|date:"d.m.Y" }} записей нет
 </div>
+
 {% endif %}
 
 {% endblock %}

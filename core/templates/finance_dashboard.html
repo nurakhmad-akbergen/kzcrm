@@ -162,26 +162,42 @@ legend: { display: false }
 });
 
 // PIE CHART
-new Chart(document.getElementById("pieChart"), {
+
+const pieCtx = document.getElementById("pieChart");
+
+const pieChart = new Chart(pieCtx, {
 
 type: 'pie',
 
 data: {
 labels: methodLabels,
 datasets: [{
-data: methodTotals
+data: methodTotals.map(() => 0)
 }]
 },
 
 options: {
+
 responsive: true,
+
 animation: {
-duration: 2500,
-easing: 'easeOutBounce'
+duration: 2000,
+easing: 'easeOutQuart'
 }
+
 }
 
 });
+
+
+// запускаем анимацию после загрузки
+
+setTimeout(() => {
+
+pieChart.data.datasets[0].data = methodTotals;
+pieChart.update();
+
+}, 100);
 
 });
 

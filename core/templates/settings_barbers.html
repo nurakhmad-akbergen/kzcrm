@@ -14,6 +14,7 @@
     <h3 class="m-0">Мастера</h3>
 </div>
 
+
 <div class="card mb-4 shadow-sm">
 <div class="card-body">
 
@@ -54,12 +55,15 @@
 
 <div class="d-flex gap-2">
 
-<a href="/settings/barbers/edit/{{ barber.id }}/"
-class="btn btn-sm btn-warning">
+<button
+class="btn btn-sm btn-warning edit-barber-btn"
+data-id="{{ barber.id }}"
+data-name="{{ barber.name }}"
+data-commission="{{ barber.commission_percent }}">
 Редактировать
-</a>
+</button>
 
-<a href="/settings/barbers/delete/{{ barber.id }}/"
+<a href="{% url 'delete_barber' barber.id %}"
 class="btn btn-sm btn-danger"
 onclick="return confirm('Удалить мастера?');">
 Удалить
@@ -81,5 +85,77 @@ onclick="return confirm('Удалить мастера?');">
 
 </div>
 </div>
+
+
+<!-- МОДАЛЬНОЕ ОКНО -->
+
+<div class="modal fade" id="editBarberModal" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+
+<div class="modal-header">
+<h5 class="modal-title">Редактировать мастера</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST" id="editBarberForm">
+{% csrf_token %}
+
+<div class="modal-body">
+
+<div class="mb-3">
+<label class="form-label">Имя мастера</label>
+<input type="text" name="name" id="barberName" class="form-control" required>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Комиссия (%)</label>
+<input type="number" name="commission_percent" id="barberCommission" class="form-control" required>
+</div>
+
+</div>
+
+<div class="modal-footer">
+<button class="btn btn-success">Сохранить</button>
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+document.querySelectorAll(".edit-barber-btn").forEach(btn => {
+
+btn.addEventListener("click", function() {
+
+const id = this.dataset.id
+const name = this.dataset.name
+const commission = this.dataset.commission
+
+document.getElementById("barberName").value = name
+document.getElementById("barberCommission").value = commission
+
+document.getElementById("editBarberForm").action =
+`{% url 'edit_barber' 0 %}`.replace("0", id)
+
+const modal = new bootstrap.Modal(
+document.getElementById("editBarberModal")
+)
+
+modal.show()
+
+})
+
+})
+
+})
+
+</script>
 
 {% endblock %}
