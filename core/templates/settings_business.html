@@ -1,0 +1,61 @@
+{% extends "core/base.html" %}
+
+{% block page_title %}
+Профиль бизнеса
+{% endblock %}
+
+{% block page_subtitle %}
+Основные параметры CRM и данные компании
+{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <section class="crm-panel p-6">
+        <div class="border-b border-slate-100 pb-4">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Настройки</div>
+            <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Данные бизнеса</h3>
+        </div>
+
+        <form method="POST" class="mt-6 space-y-5">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="inline-flex rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
+                Сохранить настройки
+            </button>
+        </form>
+    </section>
+
+    <aside class="space-y-6">
+        <div class="crm-muted-panel p-6">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Состояние базы</div>
+            <div class="mt-4 grid gap-3">
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.client_plural }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.clients }}</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.staff_plural }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.staff }}</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Услуги</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.services }}</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.booking_plural }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.appointments }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="crm-panel p-6">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Зачем это важно</div>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                <li>Тип бизнеса помогает адаптировать терминологию CRM под твою нишу.</li>
+                <li>Телефон и город нужны для будущих уведомлений и клиентского интерфейса.</li>
+                <li>Часовой пояс важен, чтобы расписание и аналитика считались корректно.</li>
+            </ul>
+        </div>
+    </aside>
+</div>
+{% endblock %}

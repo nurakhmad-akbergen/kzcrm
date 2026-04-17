@@ -21,6 +21,13 @@ class TimestampedModel(models.Model):
 # =========================================
 
 class Shop(TimestampedModel):
+    class IndustryType(models.TextChoices):
+        BARBERSHOP = "BARBERSHOP", "Барбершоп"
+        DENTISTRY = "DENTISTRY", "Стоматология"
+        BEAUTY_SALON = "BEAUTY_SALON", "Салон красоты"
+        CLINIC = "CLINIC", "Клиника"
+        GENERIC = "GENERIC", "Другое"
+
     owner = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -28,6 +35,12 @@ class Shop(TimestampedModel):
     )
 
     name = models.CharField(max_length=120)
+    industry_type = models.CharField(
+        max_length=30,
+        choices=IndustryType.choices,
+        default=IndustryType.BARBERSHOP,
+    )
+    timezone = models.CharField(max_length=64, default="Asia/Almaty")
     city = models.CharField(max_length=80, blank=True)
     phone = models.CharField(max_length=30, blank=True)
 

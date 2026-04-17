@@ -1,0 +1,396 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dias CRM | CRM для управления записями, клиентами и выручкой</title>
+  {% tailwind_css %}
+</head>
+<body class="min-h-screen bg-[#07111f] text-slate-100">
+  <div class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.18),transparent_28%),linear-gradient(180deg,#07111f_0%,#0b1627_42%,#101d32_100%)]"></div>
+    <div class="absolute inset-x-0 top-0 h-px bg-white/10"></div>
+
+    <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8">
+      <a href="/welcome/" class="flex items-center gap-3">
+        <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-sky-400 text-lg font-bold text-slate-950 shadow-[0_20px_45px_-25px_rgba(45,212,191,0.8)]">D</span>
+        <div>
+          <div class="text-[11px] font-semibold uppercase tracking-[0.35em] text-teal-300/80">CRM Platform</div>
+          <div class="mt-1 text-xl font-semibold tracking-tight text-white">Dias CRM</div>
+        </div>
+      </a>
+
+      <nav class="hidden items-center gap-8 lg:flex">
+        <a href="#problems" class="text-sm font-medium text-slate-300 transition hover:text-white">Проблемы</a>
+        <a href="#features" class="text-sm font-medium text-slate-300 transition hover:text-white">Возможности</a>
+        <a href="#industries" class="text-sm font-medium text-slate-300 transition hover:text-white">Для кого</a>
+        <a href="#workflow" class="text-sm font-medium text-slate-300 transition hover:text-white">Как работает</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <a href="/login/" class="hidden rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex">Войти</a>
+        <a href="/register/" class="inline-flex rounded-full bg-gradient-to-r from-teal-400 to-sky-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_45px_-22px_rgba(34,211,238,0.85)] transition hover:from-teal-300 hover:to-sky-300">Попробовать</a>
+      </div>
+    </header>
+
+    <section class="relative z-10 mx-auto grid max-w-7xl gap-14 px-4 pb-24 pt-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8 lg:pb-32 lg:pt-16">
+      <div class="max-w-3xl landing-reveal" style="--reveal-delay: 0ms;">
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 backdrop-blur">
+          <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+          Для стоматологий, барбершопов, салонов и сервисных команд
+        </div>
+
+        <h1 class="mt-8 text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl xl:text-7xl">
+          CRM, которая наводит порядок в записях, клиентах и деньгах.
+        </h1>
+
+        <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+          Dias CRM помогает администратору и менеджеру видеть весь день в одном окне:
+          кто записан, кто отменился, кто не пришёл, сколько заработали и где бизнес теряет деньги.
+        </p>
+
+        <div class="mt-10 flex flex-col gap-4 sm:flex-row">
+          <a href="/register/" class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-teal-400 to-sky-400 px-7 py-4 text-base font-semibold text-slate-950 shadow-[0_24px_60px_-28px_rgba(34,211,238,0.9)] transition hover:from-teal-300 hover:to-sky-300">
+            Начать бесплатно
+          </a>
+          <a href="#features" class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-7 py-4 text-base font-semibold text-white transition hover:bg-white/10">
+            Посмотреть возможности
+          </a>
+        </div>
+
+        <div class="mt-14 grid gap-4 sm:grid-cols-3">
+          <div class="landing-panel p-5">
+            <div class="text-sm text-slate-400">Запись и расписание</div>
+            <div class="mt-2 text-2xl font-semibold text-white">Без накладок</div>
+          </div>
+          <div class="landing-panel p-5">
+            <div class="text-sm text-slate-400">Карточки клиентов</div>
+            <div class="mt-2 text-2xl font-semibold text-white">С историей</div>
+          </div>
+          <div class="landing-panel p-5">
+            <div class="text-sm text-slate-400">Финансы и потери</div>
+            <div class="mt-2 text-2xl font-semibold text-white">Под контролем</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative landing-reveal" style="--reveal-delay: 120ms;">
+        <div class="absolute -left-6 top-16 h-28 w-28 rounded-full bg-teal-400/20 blur-3xl"></div>
+        <div class="absolute -right-8 bottom-12 h-36 w-36 rounded-full bg-sky-400/20 blur-3xl"></div>
+
+        <div class="relative overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(11,20,36,0.98))] p-5 shadow-[0_30px_90px_-35px_rgba(2,6,23,0.95)]">
+          <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Рабочий день</div>
+              <div class="mt-2 text-lg font-semibold text-white">Сегодня в CRM</div>
+            </div>
+            <div class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+              Все под контролем
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+            <div class="rounded-[28px] border border-white/8 bg-white/5 p-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-slate-300">Расписание</div>
+                <div class="text-xs text-slate-500">17 апреля</div>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <div class="rounded-2xl border border-teal-400/15 bg-teal-400/10 p-4">
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <div class="text-sm font-semibold text-white">09:30 · Консультация</div>
+                      <div class="mt-1 text-sm text-slate-300">Алия С. · Новый клиент</div>
+                    </div>
+                    <div class="rounded-full bg-slate-950/60 px-3 py-1 text-xs font-semibold text-teal-200">Подтверждено</div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <div class="text-sm font-semibold text-white">13:30 · Профгигиена</div>
+                      <div class="mt-1 text-sm text-slate-300">Нурсултан Т. · Повторный визит</div>
+                    </div>
+                    <div class="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-200">Ожидается</div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <div class="text-sm font-semibold text-white">16:00 · Брекет-чек</div>
+                      <div class="mt-1 text-sm text-slate-300">Аружан М. · Нужно напомнить</div>
+                    </div>
+                    <div class="rounded-full bg-rose-400/15 px-3 py-1 text-xs font-semibold text-rose-200">Риск no-show</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-1">
+                <div class="rounded-[28px] border border-white/8 bg-white/5 p-4">
+                  <div class="text-sm text-slate-400">Выручка за день</div>
+                  <div class="mt-2 text-3xl font-semibold text-white">186 000 ₸</div>
+                  <div class="mt-2 text-sm text-emerald-300">+12% к прошлой неделе</div>
+                </div>
+                <div class="rounded-[28px] border border-white/8 bg-white/5 p-4">
+                  <div class="text-sm text-slate-400">Потери</div>
+                  <div class="mt-2 text-3xl font-semibold text-white">24 000 ₸</div>
+                  <div class="mt-2 text-sm text-amber-300">1 отмена и 1 no-show</div>
+                </div>
+              </div>
+
+              <div class="rounded-[28px] border border-white/8 bg-white/5 p-4">
+                <div class="text-sm font-medium text-slate-300">Карточка клиента</div>
+                <div class="mt-4 rounded-2xl bg-slate-950/50 p-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-base font-semibold text-white">Дана Абдуллина</div>
+                      <div class="mt-1 text-sm text-slate-400">6 визитов · средний чек 19 500 ₸</div>
+                    </div>
+                    <div class="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-semibold text-sky-200">Следующий визит 21.04</div>
+                  </div>
+                  <div class="mt-4 text-sm leading-6 text-slate-300">
+                    Последний визит завершён. Есть заметка администратора и история оплат.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <main class="relative z-10">
+    <section id="problems" class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="max-w-3xl landing-reveal">
+        <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Где бизнес теряет деньги</div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          Когда записи, клиенты и финансы живут в разных местах, хаос становится нормой.
+        </h2>
+        <p class="mt-5 text-lg leading-8 text-slate-300">
+          Таблицы, мессенджеры, тетради и заметки в телефоне не дают администратору видеть картину целиком.
+          В итоге страдает загрузка, сервис и прибыль.
+        </p>
+      </div>
+
+      <div class="mt-14 grid gap-6 lg:grid-cols-3">
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 0ms;">
+          <div class="text-sm font-semibold text-rose-300">Записи теряются</div>
+          <p class="mt-4 text-sm leading-7 text-slate-300">
+            Накладки по времени, забытые звонки, несогласованные переносы и клиенты, которые выпадают из процесса.
+          </p>
+        </div>
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 100ms;">
+          <div class="text-sm font-semibold text-amber-300">Не видно реальных потерь</div>
+          <p class="mt-4 text-sm leading-7 text-slate-300">
+            Отмены и no-show происходят, но никто не считает, сколько денег бизнес реально недополучает.
+          </p>
+        </div>
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 180ms;">
+          <div class="text-sm font-semibold text-sky-300">Клиентская база не работает</div>
+          <p class="mt-4 text-sm leading-7 text-slate-300">
+            История визитов, заметки и следующий контакт не собраны в одном месте, поэтому удержание клиентов проседает.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-12">
+        <div class="rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,28,46,0.96),rgba(10,18,31,0.98))] p-8 shadow-[0_30px_90px_-35px_rgba(2,6,23,0.9)]">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Почему платят за CRM</div>
+          <h2 class="mt-4 text-4xl font-semibold tracking-tight text-white">Не просто календарь, а полноценный центр управления сервисным бизнесом.</h2>
+          <p class="mt-5 text-base leading-8 text-slate-300">
+            Dias CRM собирает ключевые рабочие процессы администратора в одну систему и помогает принимать решения не по ощущениям, а по фактам.
+          </p>
+          <div class="mt-8 space-y-4">
+            <div class="rounded-2xl border border-white/8 bg-white/5 p-5">
+              <div class="text-sm font-semibold text-white">Расписание на день и неделю</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">Записи, статусы, быстрые действия и контроль загрузки команды.</div>
+            </div>
+            <div class="rounded-2xl border border-white/8 bg-white/5 p-5">
+              <div class="text-sm font-semibold text-white">Настоящие карточки клиентов</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">История визитов, заметки, следующий визит, no-show, отмены и оплаченные услуги.</div>
+            </div>
+            <div class="rounded-2xl border border-white/8 bg-white/5 p-5">
+              <div class="text-sm font-semibold text-white">Финансы и аналитика</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">Выручка, потери, загрузка и основные показатели бизнеса прямо в интерфейсе.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="landing-panel p-8 landing-reveal" style="--reveal-delay: 0ms;">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">01</div>
+            <h3 class="mt-4 text-2xl font-semibold text-white">Контроль дня в одном окне</h3>
+            <p class="mt-4 text-sm leading-7 text-slate-300">Администратор сразу видит текущий день, ближайшие визиты и проблемные записи, которые требуют внимания.</p>
+          </div>
+          <div class="landing-panel p-8 landing-reveal" style="--reveal-delay: 90ms;">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">02</div>
+            <h3 class="mt-4 text-2xl font-semibold text-white">Порядок в клиентской базе</h3>
+            <p class="mt-4 text-sm leading-7 text-slate-300">Больше не нужно искать информацию в чате, таблице или памяти администратора.</p>
+          </div>
+          <div class="landing-panel p-8 landing-reveal" style="--reveal-delay: 180ms;">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">03</div>
+            <h3 class="mt-4 text-2xl font-semibold text-white">Понимание отмен и no-show</h3>
+            <p class="mt-4 text-sm leading-7 text-slate-300">CRM показывает не только факт потери, но и стоимость этой потери для бизнеса.</p>
+          </div>
+          <div class="landing-panel p-8 landing-reveal" style="--reveal-delay: 260ms;">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">04</div>
+            <h3 class="mt-4 text-2xl font-semibold text-white">Подходит под разные ниши</h3>
+            <p class="mt-4 text-sm leading-7 text-slate-300">Барбершоп, стоматология, салон, клиника или студия работают на одном сильном ядре CRM.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="industries" class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-10">
+        <div class="max-w-3xl landing-reveal">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Для кого подходит</div>
+          <h2 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">Один продукт для бизнеса, где важны записи, клиенты и повторные визиты.</h2>
+        </div>
+
+        <div class="landing-panel p-7 sm:p-8 landing-reveal" style="--reveal-delay: 100ms;">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Гибкая основа</div>
+              <div class="mt-3 text-2xl font-semibold tracking-tight text-white">Один продукт, несколько сценариев бизнеса</div>
+            </div>
+            <div class="hidden rounded-2xl border border-teal-400/15 bg-teal-400/10 px-4 py-3 text-right sm:block">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-teal-200">Multi-industry</div>
+              <div class="mt-1 text-lg font-semibold text-white">CRM Core</div>
+            </div>
+          </div>
+
+          <p class="mt-5 text-base leading-8 text-slate-300">
+            Мы не делаем узкий инструмент только для одной ниши. У продукта универсальное ядро, а интерфейс, термины и рабочие сценарии можно адаптировать под конкретный бизнес.
+          </p>
+
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Ядро</div>
+              <div class="mt-2 text-sm font-semibold text-white">Клиенты и записи</div>
+            </div>
+            <div class="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Гибкость</div>
+              <div class="mt-2 text-sm font-semibold text-white">Термины под нишу</div>
+            </div>
+            <div class="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Ценность</div>
+              <div class="mt-2 text-sm font-semibold text-white">Один SaaS для роста</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 0ms;">
+          <div class="text-sm font-semibold text-white">Стоматологии</div>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Приёмы, карточки пациентов, история визитов, финансы и контроль загрузки врачей.</p>
+        </div>
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 90ms;">
+          <div class="text-sm font-semibold text-white">Барбершопы</div>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Удобная запись, график мастеров, повторные визиты, no-show и выручка по услугам.</p>
+        </div>
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 180ms;">
+          <div class="text-sm font-semibold text-white">Салоны и студии</div>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Клиентская база, заметки, история услуг и стабильная работа администратора без хаоса.</p>
+        </div>
+        <div class="landing-panel p-7 landing-reveal" style="--reveal-delay: 260ms;">
+          <div class="text-sm font-semibold text-white">Клиники и сервисы</div>
+          <p class="mt-3 text-sm leading-7 text-slate-300">Любой бизнес, где есть запись по времени, постоянные клиенты и потребность видеть деньги.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,18,31,0.96),rgba(7,13,25,0.98))] p-8 shadow-[0_30px_90px_-35px_rgba(2,6,23,0.92)] sm:p-10">
+        <div class="max-w-3xl landing-reveal">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Как это работает</div>
+          <h2 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">От регистрации до рабочего дня в CRM за несколько шагов.</h2>
+        </div>
+
+        <div class="mt-14 grid gap-6 lg:grid-cols-4">
+          <div class="rounded-[28px] border border-white/8 bg-white/5 p-6 landing-reveal" style="--reveal-delay: 0ms;">
+            <div class="text-sm font-semibold text-teal-200">Шаг 1</div>
+            <div class="mt-3 text-xl font-semibold text-white">Создаёшь аккаунт</div>
+            <p class="mt-3 text-sm leading-7 text-slate-300">Выбираешь тип бизнеса и получаешь своё рабочее пространство.</p>
+          </div>
+          <div class="rounded-[28px] border border-white/8 bg-white/5 p-6 landing-reveal" style="--reveal-delay: 90ms;">
+            <div class="text-sm font-semibold text-teal-200">Шаг 2</div>
+            <div class="mt-3 text-xl font-semibold text-white">Добавляешь услуги и команду</div>
+            <p class="mt-3 text-sm leading-7 text-slate-300">CRM готовится к реальной работе без лишней бюрократии.</p>
+          </div>
+          <div class="rounded-[28px] border border-white/8 bg-white/5 p-6 landing-reveal" style="--reveal-delay: 180ms;">
+            <div class="text-sm font-semibold text-teal-200">Шаг 3</div>
+            <div class="mt-3 text-xl font-semibold text-white">Ведёте записи и клиентскую базу</div>
+            <p class="mt-3 text-sm leading-7 text-slate-300">Фиксируете визиты, отмены, no-show, заметки и оплаты в одном месте.</p>
+          </div>
+          <div class="rounded-[28px] border border-white/8 bg-white/5 p-6 landing-reveal" style="--reveal-delay: 260ms;">
+            <div class="text-sm font-semibold text-teal-200">Шаг 4</div>
+            <div class="mt-3 text-xl font-semibold text-white">Принимаешь решения по цифрам</div>
+            <p class="mt-3 text-sm leading-7 text-slate-300">Видишь загрузку, выручку и реальные точки потери денег.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="rounded-[36px] border border-white/10 bg-[linear-gradient(135deg,rgba(45,212,191,0.16),rgba(56,189,248,0.12),rgba(17,24,39,0.96))] px-8 py-14 shadow-[0_30px_90px_-35px_rgba(14,165,233,0.3)] sm:px-10">
+        <div class="max-w-3xl landing-reveal">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-200/90">Запуск</div>
+          <h2 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            Подключите CRM, которая помогает держать под контролем записи, клиентов и выручку.
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">
+            Dias CRM подходит для сервисного бизнеса, где важны расписание, повторные визиты и качественная работа с клиентской базой.
+            Зарегистрируйтесь, настройте своё пространство и начните работать в системе уже сегодня.
+          </p>
+        </div>
+
+        <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+          <a href="/register/" class="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-base font-semibold text-slate-950 transition hover:bg-slate-100">
+            Перейти к регистрации
+          </a>
+          <a href="/login/" class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-7 py-4 text-base font-semibold text-white transition hover:bg-white/10">
+            Войти в кабинет
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const items = document.querySelectorAll('.landing-reveal');
+      if (!items.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        items.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        });
+      }, {
+        threshold: 0.14,
+        rootMargin: '0px 0px -40px 0px',
+      });
+
+      items.forEach((item) => observer.observe(item));
+    })();
+  </script>
+</body>
+</html>

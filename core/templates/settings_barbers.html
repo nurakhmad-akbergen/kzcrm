@@ -1,161 +1,57 @@
-{% extends "base.html" %}
+{% extends "core/base.html" %}
 
 {% block page_title %}
-Мастера
+{{ crm_labels.staff_plural }}
 {% endblock %}
 
 {% block page_subtitle %}
-Управление мастерами
+Управление командой
 {% endblock %}
 
 {% block content %}
+<div class="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+    <section class="rounded-[30px] border border-white/70 bg-white/90 p-6 shadow-[0_24px_80px_-32px_rgba(37,28,18,0.35)]">
+        <div class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Новый сотрудник</div>
+        <h3 class="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Добавить {{ crm_labels.staff_singular|lower }}</h3>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="m-0">Мастера</h3>
+        <form method="POST" class="mt-6 space-y-5">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                Добавить {{ crm_labels.staff_singular|lower }}
+            </button>
+        </form>
+    </section>
+
+    <section class="rounded-[30px] border border-white/70 bg-white/90 p-6 shadow-[0_24px_80px_-32px_rgba(37,28,18,0.35)]">
+        <div class="border-b border-slate-100 pb-4">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Команда</div>
+            <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Список {{ crm_labels.staff_plural|lower }}</h3>
+        </div>
+
+        <div class="mt-4 space-y-3">
+            {% for barber in barbers %}
+                <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="font-semibold text-slate-900">{{ barber.name }}</div>
+                        <div class="mt-1 text-sm text-slate-500">Комиссия: {{ barber.commission_percent }}%</div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{% url 'edit_barber' barber.id %}" class="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                            Редактировать
+                        </a>
+                        <a href="{% url 'delete_barber' barber.id %}" class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100" onclick="return confirm('Удалить {{ crm_labels.staff_singular|lower }}?');">
+                            Удалить
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+                    Нет сотрудников
+                </div>
+            {% endfor %}
+        </div>
+    </section>
 </div>
-
-
-<div class="card mb-4 shadow-sm">
-<div class="card-body">
-
-<h5 class="mb-3">Добавить мастера</h5>
-
-<form method="POST">
-{% csrf_token %}
-
-{{ form.as_p }}
-
-<button class="btn btn-success">
-Добавить мастера
-</button>
-
-</form>
-
-</div>
-</div>
-
-
-<div class="card shadow-sm">
-<div class="card-body">
-
-<h5 class="mb-3">Список мастеров</h5>
-
-<ul class="list-group">
-
-{% for barber in barbers %}
-
-<li class="list-group-item d-flex justify-content-between align-items-center">
-
-<div>
-<strong>{{ barber.name }}</strong><br>
-<small class="text-muted">
-Комиссия: {{ barber.commission_percent }}%
-</small>
-</div>
-
-<div class="d-flex gap-2">
-
-<button
-class="btn btn-sm btn-warning edit-barber-btn"
-data-id="{{ barber.id }}"
-data-name="{{ barber.name }}"
-data-commission="{{ barber.commission_percent }}">
-Редактировать
-</button>
-
-<a href="{% url 'delete_barber' barber.id %}"
-class="btn btn-sm btn-danger"
-onclick="return confirm('Удалить мастера?');">
-Удалить
-</a>
-
-</div>
-
-</li>
-
-{% empty %}
-
-<li class="list-group-item text-muted">
-Нет мастеров
-</li>
-
-{% endfor %}
-
-</ul>
-
-</div>
-</div>
-
-
-<!-- МОДАЛЬНОЕ ОКНО -->
-
-<div class="modal fade" id="editBarberModal" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-
-<div class="modal-header">
-<h5 class="modal-title">Редактировать мастера</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<form method="POST" id="editBarberForm">
-{% csrf_token %}
-
-<div class="modal-body">
-
-<div class="mb-3">
-<label class="form-label">Имя мастера</label>
-<input type="text" name="name" id="barberName" class="form-control" required>
-</div>
-
-<div class="mb-3">
-<label class="form-label">Комиссия (%)</label>
-<input type="number" name="commission_percent" id="barberCommission" class="form-control" required>
-</div>
-
-</div>
-
-<div class="modal-footer">
-<button class="btn btn-success">Сохранить</button>
-</div>
-
-</form>
-
-</div>
-</div>
-</div>
-
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
-
-document.querySelectorAll(".edit-barber-btn").forEach(btn => {
-
-btn.addEventListener("click", function() {
-
-const id = this.dataset.id
-const name = this.dataset.name
-const commission = this.dataset.commission
-
-document.getElementById("barberName").value = name
-document.getElementById("barberCommission").value = commission
-
-document.getElementById("editBarberForm").action =
-`{% url 'edit_barber' 0 %}`.replace("0", id)
-
-const modal = new bootstrap.Modal(
-document.getElementById("editBarberModal")
-)
-
-modal.show()
-
-})
-
-})
-
-})
-
-</script>
-
 {% endblock %}

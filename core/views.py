@@ -3,25 +3,113 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Avg
+from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models.functions import TruncDay
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.contrib.auth import login
-from .forms import RegisterForm
-from .models import Shop
-from .models import Appointment, Barber, Payment, Client
+from .forms import AppointmentStatusForm, ClientProfileForm, RegisterForm, ShopProfileForm
 import re
-from .forms import AppointmentForm
-from .models import Appointment, Barber, Payment
-from .models import Shop, Barber, Service
 from django.http import JsonResponse
-from .forms import AppointmentForm, BarberForm
-from .forms import ServiceForm
-from django.db.models import Count, Sum, Max
-from .models import Client, Appointment, Payment
+from .forms import AppointmentForm, BarberForm, ServiceForm
+from .models import Appointment, Barber, Client, Payment, Service, Shop
 from django.utils.dateparse import parse_date
+from .terminology import get_shop_labels
 
+
+def landing_page(request):
+    return render(request, "landing.html")
+
+
+@login_required
+def dashboard_overview(request):
+
+    shop = request.user.shop
+    labels = get_shop_labels(shop)
+    today = timezone.localdate()
+    now = timezone.now()
+    month_start = today.replace(day=1)
+
+    appointments = Appointment.objects.filter(shop=shop)
+    paid_payments = Payment.objects.filter(appointment__shop=shop, is_paid=True)
+    today_appointments = appointments.filter(start_at__date=today)
+
+    upcoming_appointments = (
+        appointments
+        .filter(
+            start_at__gte=now,
+            status__in=[Appointment.Status.BOOKED, Appointment.Status.CONFIRMED],
+        )
+        .select_related("client", "barber", "service")
+        .order_by("start_at")[:5]
+    )
+
+    total_clients = Client.objects.filter(shop=shop).count()
+    total_staff = Barber.objects.filter(shop=shop, is_active=True).count()
+    total_services = Service.objects.filter(shop=shop, is_active=True).count()
+    today_bookings_count = today_appointments.count()
+    completed_count = today_appointments.filter(
+        status=Appointment.Status.DONE
+    ).count()
+    canceled_count = today_appointments.filter(
+        status=Appointment.Status.CANCELED
+    ).count()
+    no_show_count = today_appointments.filter(
+        status=Appointment.Status.NO_SHOW
+    ).count()
+
+    today_revenue = (
+        paid_payments
+        .filter(appointment__start_at__date=today)
+        .aggregate(total=Sum("amount_kzt"))["total"] or 0
+    )
+    month_revenue = (
+        paid_payments
+        .filter(appointment__start_at__date__gte=month_start)
+        .aggregate(total=Sum("amount_kzt"))["total"] or 0
+    )
+    lost_revenue_today = (
+        today_appointments
+        .filter(status__in=[Appointment.Status.CANCELED, Appointment.Status.NO_SHOW])
+        .aggregate(total=Sum("service__price_kzt"))["total"] or 0
+    )
+
+    setup_progress = [
+        {"label": labels["staff_plural"], "done": total_staff > 0, "value": total_staff},
+        {"label": "Услуги", "done": total_services > 0, "value": total_services},
+        {"label": labels["client_plural"], "done": total_clients > 0, "value": total_clients},
+        {
+            "label": f"{labels['booking_plural']} на сегодня",
+            "done": today_bookings_count > 0,
+            "value": today_bookings_count,
+        },
+    ]
+
+    top_services = (
+        appointments
+        .values("service__name")
+        .annotate(total=Count("id"))
+        .order_by("-total", "service__name")[:4]
+    )
+
+    return render(request, "overview.html", {
+        "today": today,
+        "today_bookings_count": today_bookings_count,
+        "today_revenue": today_revenue,
+        "month_revenue": month_revenue,
+        "total_clients": total_clients,
+        "total_staff": total_staff,
+        "total_services": total_services,
+        "completed_count": completed_count,
+        "canceled_count": canceled_count,
+        "no_show_count": no_show_count,
+        "lost_revenue_today": lost_revenue_today,
+        "upcoming_appointments": upcoming_appointments,
+        "setup_progress": setup_progress,
+        "top_services": top_services,
+    })
 
 
 @login_required
@@ -35,11 +123,40 @@ def client_detail(request, client_id):
         shop=shop
     )
 
+    if request.method == "POST":
+        form = ClientProfileForm(request.POST, instance=client)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Карточка клиента обновлена")
+            return redirect("client_detail", client_id=client.id)
+    else:
+        form = ClientProfileForm(instance=client)
+
     appointments = (
         Appointment.objects
         .filter(client=client)
         .select_related("barber", "service")
         .order_by("-start_at")
+    )
+
+    now = timezone.now()
+    next_appointment = (
+        appointments
+        .filter(
+            start_at__gte=now,
+            status__in=[Appointment.Status.BOOKED, Appointment.Status.CONFIRMED],
+        )
+        .order_by("start_at")
+        .first()
+    )
+    last_appointment = (
+        appointments
+        .filter(
+            start_at__lt=now,
+            status=Appointment.Status.DONE,
+        )
+        .order_by("-start_at")
+        .first()
     )
 
     total_spent = (
@@ -49,35 +166,135 @@ def client_detail(request, client_id):
         or 0
     )
 
+    visit_count = appointments.filter(status=Appointment.Status.DONE).count()
+    done_count = appointments.filter(status=Appointment.Status.DONE).count()
+    avg_check = (
+        Payment.objects
+        .filter(appointment__client=client, is_paid=True)
+        .aggregate(avg=Avg("amount_kzt"))["avg"] or 0
+    )
+
     return render(request, "client_detail.html", {
         "client": client,
         "appointments": appointments,
-        "total_spent": total_spent
+        "form": form,
+        "total_spent": total_spent,
+        "visit_count": visit_count,
+        "done_count": done_count,
+        "avg_check": round(avg_check, 2),
+        "next_appointment": next_appointment,
+        "last_appointment": last_appointment,
     })
 
 
 @login_required
 def clients_list(request):
     shop = request.user.shop
+    q = request.GET.get("q", "").strip()
+
+    clients = Client.objects.filter(shop=shop)
+
+    if q:
+        clients = clients.filter(
+            Q(name__icontains=q) |
+            Q(phone__icontains=q) |
+            Q(instagram__icontains=q)
+        )
 
     clients = (
-        Client.objects.filter(shop=shop)
+        clients
         .annotate(
-            visits=Count("appointments"),
+            visits=Count(
+                "appointments",
+                filter=Q(appointments__status=Appointment.Status.DONE),
+            ),
             total_spent=Sum("appointments__payment__amount_kzt"),
-            last_visit=Max("appointments__start_at")
+            last_visit=Max(
+                "appointments__start_at",
+                filter=Q(appointments__status=Appointment.Status.DONE),
+            ),
+            next_visit=Min(
+                "appointments__start_at",
+                filter=Q(
+                    appointments__status__in=[
+                        Appointment.Status.BOOKED,
+                        Appointment.Status.CONFIRMED,
+                    ],
+                    appointments__start_at__gte=timezone.now(),
+                ),
+            ),
         )
         .order_by("-last_visit")
     )
 
     return render(request, "clients.html", {
-        "clients": clients
+        "clients": clients,
+        "q": q,
     })
 
 
 @login_required
 def settings_dashboard(request):
-    return render(request, "settings_dashboard.html")
+    shop = request.user.shop
+    labels = get_shop_labels(shop)
+
+    setup_items = [
+        {
+            "label": "Название и тип бизнеса",
+            "done": bool(shop.name and shop.industry_type),
+            "hint": "Укажи базовые данные бизнеса, чтобы система была настроена под твою нишу.",
+        },
+        {
+            "label": f"{labels['staff_plural']}",
+            "done": Barber.objects.filter(shop=shop, is_active=True).exists(),
+            "hint": "Добавь команду, чтобы можно было вести реальное расписание и распределять загрузку.",
+        },
+        {
+            "label": "Услуги и цены",
+            "done": Service.objects.filter(shop=shop, is_active=True).exists(),
+            "hint": "Каталог услуг нужен для записи клиентов, оплаты и аналитики по выручке.",
+        },
+        {
+            "label": f"{labels['booking_plural']} на сегодня",
+            "done": Appointment.objects.filter(shop=shop, start_at__date=timezone.localdate()).exists(),
+            "hint": "Создай первую запись и проверь, что ежедневный рабочий процесс уже запущен.",
+        },
+    ]
+
+    setup_completed = sum(1 for item in setup_items if item["done"])
+    setup_total = len(setup_items)
+
+    return render(request, "settings_dashboard.html", {
+        "setup_items": setup_items,
+        "setup_completed": setup_completed,
+        "setup_total": setup_total,
+    })
+
+
+@login_required
+def business_settings(request):
+    shop = request.user.shop
+
+    if request.method == "POST":
+        form = ShopProfileForm(request.POST, instance=shop)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Настройки бизнеса обновлены")
+            return redirect("business_settings")
+    else:
+        form = ShopProfileForm(instance=shop)
+
+    stats = {
+        "clients": Client.objects.filter(shop=shop).count(),
+        "staff": Barber.objects.filter(shop=shop, is_active=True).count(),
+        "services": Service.objects.filter(shop=shop, is_active=True).count(),
+        "appointments": Appointment.objects.filter(shop=shop).count(),
+    }
+
+    return render(request, "settings_business.html", {
+        "form": form,
+        "stats": stats,
+    })
 
 
 @login_required
@@ -109,32 +326,83 @@ def edit_barber(request, barber_id):
 
 
 @login_required
+def edit_service(request, service_id):
+    shop = request.user.shop
+    service = get_object_or_404(Service, id=service_id, shop=shop)
+
+    if request.method == "POST":
+        form = ServiceForm(request.POST, instance=service)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Услуга обновлена")
+            return redirect("services_settings")
+    else:
+        form = ServiceForm(instance=service)
+
+    return render(request, "edit_service.html", {"form": form, "service": service})
+
+
+@login_required
+def delete_service(request, service_id):
+    shop = request.user.shop
+    service = get_object_or_404(Service, id=service_id, shop=shop)
+
+    try:
+        service.delete()
+        messages.success(request, "Услуга удалена")
+    except ProtectedError:
+        messages.error(request, "Нельзя удалить услугу, которая уже используется в записях")
+
+    return redirect("services_settings")
+
+
+@login_required
 def today_schedule(request):
 
     shop = request.user.shop
 
     date_str = request.GET.get("date")
+    q = request.GET.get("q", "").strip()
+    barber_id = request.GET.get("barber")
+    status = request.GET.get("status", "").strip()
 
-    if date_str:
-        day = parse_date(date_str)
-    else:
+    # безопасный парсинг даты
+    day = parse_date(date_str) if date_str else None
+
+    if not day:
         day = timezone.localdate()
 
-    # начало недели
-    week_start = day - timedelta(days=day.weekday())
+    week_start = day - timedelta(days=3)
+    week_end = day + timedelta(days=3)
 
-    # список дней недели
     week_days = [
         week_start + timedelta(days=i)
         for i in range(7)
     ]
 
+    prev_week = day - timedelta(days=7)
+    next_week = day + timedelta(days=7)
+
     appointments = (
         Appointment.objects
         .filter(shop=shop, start_at__date=day)
         .select_related("client", "barber", "service")
-        .order_by("start_at")
     )
+
+    if q:
+        appointments = appointments.filter(
+            Q(client__name__icontains=q) |
+            Q(client__phone__icontains=q) |
+            Q(service__name__icontains=q)
+        )
+
+    if barber_id:
+        appointments = appointments.filter(barber_id=barber_id)
+
+    if status:
+        appointments = appointments.filter(status=status)
+
+    appointments = appointments.order_by("start_at")
 
     revenue = (
         Payment.objects.filter(
@@ -145,13 +413,33 @@ def today_schedule(request):
         .aggregate(total=Sum("amount_kzt"))["total"]
         or 0
     )
+    lost_revenue = (
+        appointments
+        .filter(status__in=[Appointment.Status.CANCELED, Appointment.Status.NO_SHOW])
+        .aggregate(total=Sum("service__price_kzt"))["total"] or 0
+    )
 
     return render(request, "today.html", {
         "appointments": appointments,
+        "barbers": Barber.objects.filter(shop=shop, is_active=True).order_by("name"),
         "day": day,
         "week_days": week_days,
         "week_start": week_start,
-        "revenue": revenue
+        "week_end": week_end,
+        "prev_week": prev_week,
+        "next_week": next_week,
+        "revenue": revenue,
+        "lost_revenue": lost_revenue,
+        "q": q,
+        "selected_barber": str(barber_id or ""),
+        "selected_status": status,
+        "status_choices": [
+            ("BOOKED", "Записан"),
+            ("CONFIRMED", "Подтвержден"),
+            ("DONE", "Пришел"),
+            ("CANCELED", "Отмена"),
+            ("NO_SHOW", "Не пришел"),
+        ],
     })
     
     
@@ -235,6 +523,38 @@ def mark_done(request, appointment_id):
     return render(request, "pay_and_done.html", {
         "a": appointment,
         "methods": Payment.Method.choices,
+    })
+
+
+@login_required
+def update_appointment_status(request, appointment_id, status):
+    shop = request.user.shop
+    appointment = get_object_or_404(Appointment, id=appointment_id, shop=shop)
+
+    allowed_statuses = {
+        Appointment.Status.CANCELED: "Отмена записи",
+        Appointment.Status.NO_SHOW: "Клиент не пришел",
+    }
+
+    if status not in allowed_statuses:
+        return redirect("today_schedule")
+
+    if request.method == "POST":
+        form = AppointmentStatusForm(request.POST)
+        if form.is_valid():
+            appointment.status = status
+            appointment.comment = form.cleaned_data["comment"]
+            appointment.save()
+            messages.success(request, f"Статус записи обновлен: {appointment.get_status_display()}")
+            return redirect("today_schedule")
+    else:
+        form = AppointmentStatusForm(initial={"comment": appointment.comment})
+
+    return render(request, "appointment_status.html", {
+        "appointment": appointment,
+        "form": form,
+        "status_title": allowed_statuses[status],
+        "target_status": status,
     })
 
 
@@ -431,28 +751,30 @@ def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            with transaction.atomic():
+                user = form.save()
+                industry_type = form.cleaned_data["industry_type"]
 
-            # создаём Shop
-            shop = Shop.objects.create(
-                owner=user,
-                name=form.cleaned_data["shop_name"]
-            )
+                shop = Shop.objects.create(
+                    owner=user,
+                    name=form.cleaned_data["shop_name"],
+                    industry_type=industry_type,
+                )
 
-            # 👇 создаём мастера по умолчанию
-            Barber.objects.create(
-                shop=shop,
-                name="Основной мастер",
-                commission_percent=50
-            )
+                labels = get_shop_labels(shop)
 
-            # 👇 создаём услугу по умолчанию
-            Service.objects.create(
-                shop=shop,
-                name="Стрижка",
-                duration_min=60,
-                price_kzt=5000
-            )
+                Barber.objects.create(
+                    shop=shop,
+                    name=f"Основной {labels['staff_singular'].lower()}",
+                    commission_percent=50
+                )
+
+                Service.objects.create(
+                    shop=shop,
+                    name="Базовая услуга",
+                    duration_min=60,
+                    price_kzt=5000
+                )
 
             login(request, user)
             return redirect("today_schedule")
@@ -460,6 +782,3 @@ def register(request):
         form = RegisterForm()
 
     return render(request, "register.html", {"form": form})
-
-
-

@@ -1,103 +1,141 @@
-{% extends "base.html" %}
+{% extends "core/base.html" %}
 
 {% block page_title %}Расписание{% endblock %}
-{% block page_subtitle %}День: {{ day }} • Доход: {{ revenue }} ₸{% endblock %}
+{% block page_subtitle %}День: {{ day }} • Доход: {{ revenue }} ₸ • Потери: {{ lost_revenue }} ₸{% endblock %}
 
 {% block content %}
-
-<!-- НЕДЕЛЯ ВСЕГДА ПОКАЗЫВАЕТСЯ -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-
-        <div class="d-flex justify-content-between align-items-center mb-3">
-
-            <a href="?date={{ week_start|date:'Y-m-d'|add:'-7 days' }}"
-               class="btn btn-outline-secondary">
-                ←
-            </a>
-
-            <h5 class="m-0">
-                Неделя {{ week_start|date:"d M" }}
-            </h5>
-
-            <a href="?date={{ week_start|date:'Y-m-d'|add:'7 days' }}"
-               class="btn btn-outline-secondary">
-                →
-            </a>
-
+<section class="crm-panel p-6">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Неделя</div>
+            <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                {{ week_start|date:"d M" }} - {{ week_end|date:"d M" }}
+            </h2>
         </div>
 
-        <div class="d-flex justify-content-between flex-wrap gap-2">
-
-            {% for d in week_days %}
-            <a href="?date={{ d|date:'Y-m-d' }}"
-               class="btn {% if d == day %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                {{ d|date:"D" }}<br>
-                <strong>{{ d|date:"d" }}</strong>
-            </a>
-            {% endfor %}
-
+        <div class="flex items-center gap-3">
+            <a href="?date={{ prev_week|date:'Y-m-d' }}" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50/80 text-lg text-slate-700 transition hover:border-slate-300 hover:bg-white">←</a>
+            <a href="?date={{ next_week|date:'Y-m-d' }}" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50/80 text-lg text-slate-700 transition hover:border-slate-300 hover:bg-white">→</a>
         </div>
-
     </div>
-</div>
 
+    <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        {% for d in week_days %}
+            <a href="?date={{ d|date:'Y-m-d' }}"
+               class="rounded-[24px] border px-4 py-4 text-center transition {% if d == day %}border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 text-slate-900 shadow-[0_18px_40px_-28px_rgba(13,148,136,0.28)]{% else %}border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white{% endif %}">
+                <div class="text-xs uppercase tracking-[0.25em] {% if d == day %}text-teal-600{% else %}text-slate-400{% endif %}">{{ d|date:"D" }}</div>
+                <div class="mt-2 text-2xl font-semibold">{{ d|date:"d" }}</div>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="crm-panel mt-6 p-6">
+    <form method="GET" class="grid gap-4 lg:grid-cols-[160px_minmax(0,1fr)_220px_220px_160px]">
+        <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+        <div>
+            <label class="text-sm font-medium text-slate-700">Дата</label>
+            <input type="date" name="date_display" value="{{ day|date:'Y-m-d' }}" disabled class="mt-2 block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 shadow-sm">
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Поиск</label>
+            <input type="text" name="q" value="{{ q }}" placeholder="Клиент, телефон или услуга" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">{{ crm_labels.staff_singular }}</label>
+            <select name="barber" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                <option value="">Все</option>
+                {% for barber in barbers %}
+                    <option value="{{ barber.id }}" {% if selected_barber == barber.id|stringformat:"s" %}selected{% endif %}>{{ barber.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Статус</label>
+            <select name="status" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                <option value="">Все</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button class="w-full rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">Фильтр</button>
+        </div>
+    </form>
+</section>
 
 {% if appointments %}
+<section class="crm-panel mt-6 overflow-hidden">
+    <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+        <div>
+            <h3 class="text-lg font-semibold text-slate-950">Записи на день</h3>
+            <p class="mt-1 text-sm text-slate-500">Отмечай завершение, отмену и no-show прямо по ходу дня.</p>
+        </div>
+    </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <table class="table align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Время</th>
-                    <th>Клиент</th>
-                    <th>Услуга</th>
-                    <th>Мастер</th>
-                    <th>Статус</th>
-                    <th style="width: 140px;">Действие</th>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100">
+            <thead class="bg-slate-50/80">
+                <tr class="text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <th class="px-6 py-4">Время</th>
+                    <th class="px-6 py-4">{{ crm_labels.client_singular }}</th>
+                    <th class="px-6 py-4">Услуга</th>
+                    <th class="px-6 py-4">{{ crm_labels.staff_singular }}</th>
+                    <th class="px-6 py-4">Статус</th>
+                    <th class="px-6 py-4">Действия</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-slate-100 bg-white/80">
                 {% for a in appointments %}
-                <tr>
-                    <td class="fw-semibold">{{ a.start_at|date:"H:i" }}</td>
-                    <td>{{ a.client.name }}</td>
-                    <td>{{ a.service.name }}</td>
-                    <td>{{ a.barber.name }}</td>
-
-                    <td>
-                        {% if a.status == "DONE" %}
-                            <span class="badge bg-success">Пришел</span>
-                        {% elif a.status == "CANCELED" %}
-                            <span class="badge bg-danger">Отмена</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark">Записан</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        {% if a.status != "DONE" %}
-                            <a href="{% url 'mark_done' a.id %}" class="btn btn-sm btn-outline-success">
-                                Пришел
-                            </a>
-                        {% else %}
-                            <span class="text-muted">—</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                    <tr>
+                        <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">{{ a.start_at|date:"H:i" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">
+                            <div>{{ a.client.name }}</div>
+                            {% if a.comment %}
+                                <div class="mt-1 text-xs text-slate-400">{{ a.comment }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ a.service.name }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">{{ a.barber.name }}</td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if a.status == "DONE" %}
+                                <span class="inline-flex rounded-full bg-emerald-100/80 px-3 py-1 text-xs font-semibold text-emerald-700">Пришел</span>
+                            {% elif a.status == "CANCELED" %}
+                                <span class="inline-flex rounded-full bg-rose-100/80 px-3 py-1 text-xs font-semibold text-rose-700">Отмена</span>
+                            {% elif a.status == "NO_SHOW" %}
+                                <span class="inline-flex rounded-full bg-orange-100/80 px-3 py-1 text-xs font-semibold text-orange-700">Не пришел</span>
+                            {% else %}
+                                <span class="inline-flex rounded-full bg-amber-100/80 px-3 py-1 text-xs font-semibold text-amber-700">Записан</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if a.status == "BOOKED" or a.status == "CONFIRMED" %}
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{% url 'mark_done' a.id %}" class="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50/80 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100">
+                                        Пришел
+                                    </a>
+                                    <a href="{% url 'update_appointment_status' a.id 'CANCELED' %}" class="inline-flex rounded-full border border-rose-200/80 bg-rose-50/80 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100">
+                                        Отмена
+                                    </a>
+                                    <a href="{% url 'update_appointment_status' a.id 'NO_SHOW' %}" class="inline-flex rounded-full border border-orange-200/80 bg-orange-50/80 px-4 py-2 text-xs font-semibold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100">
+                                        No-show
+                                    </a>
+                                </div>
+                            {% else %}
+                                <span class="text-slate-300">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
-
+</section>
 {% else %}
-
-<div class="alert alert-info shadow-sm">
-    На {{ day|date:"d.m.Y" }} записей нет
+<div class="mt-6 rounded-[30px] border border-teal-100/80 bg-teal-50/70 px-6 py-8 text-center shadow-sm">
+    <div class="text-lg font-semibold text-teal-900">На {{ day|date:"d.m.Y" }} записей нет</div>
+    <p class="mt-2 text-sm text-teal-700">Можно создать первую запись и начать заполнять расписание.</p>
 </div>
-
 {% endif %}
-
 {% endblock %}

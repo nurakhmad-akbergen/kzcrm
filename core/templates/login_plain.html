@@ -1,42 +1,89 @@
+{% load static tailwind_tags %}
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <title>Вход</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход | Dias CRM</title>
+  {% tailwind_css %}
 </head>
 
-<body class="bg-light">
+<body class="min-h-screen bg-[#07111f] text-slate-100">
+  <div class="relative min-h-screen overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.16),transparent_30%),linear-gradient(180deg,#07111f_0%,#0b1627_42%,#101d32_100%)]"></div>
 
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-4">
-      <div class="card p-4 shadow-sm">
+    <div class="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center px-4 py-10 sm:px-6 lg:px-8">
+      <div class="grid w-full gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
+        <section class="landing-reveal hidden rounded-[38px] border border-white/10 bg-white/5 p-10 backdrop-blur lg:block">
+          <a href="/welcome/" class="inline-flex items-center gap-3">
+            <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-sky-400 text-lg font-bold text-slate-950 shadow-[0_20px_45px_-25px_rgba(45,212,191,0.8)]">D</span>
+            <div>
+              <div class="text-[11px] font-semibold uppercase tracking-[0.35em] text-teal-300/80">CRM Platform</div>
+              <div class="mt-1 text-xl font-semibold tracking-tight text-white">Dias CRM</div>
+            </div>
+          </a>
 
-        <h4 class="mb-4 text-center">Вход в CRM</h4>
-
-        {% if form.errors %}
-          <div class="alert alert-danger">
-            Неверный логин или пароль
+          <div class="mt-14 max-w-xl">
+            <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">Рабочее пространство</div>
+            <h1 class="mt-5 text-5xl font-semibold leading-tight tracking-tight text-white">
+              Вход в CRM, где расписание, клиенты и деньги собраны в одном окне.
+            </h1>
+            <p class="mt-6 text-base leading-8 text-slate-300">
+              Открой рабочий кабинет администратора, проверь записи на сегодня, статусы клиентов, отмены, no-show и показатели бизнеса.
+            </p>
           </div>
-        {% endif %}
 
-        <form method="POST">
-          {% csrf_token %}
-          {{ form.as_p }}
-          <button class="btn btn-primary w-100">Войти</button>
-        </form>
+          <div class="mt-12 grid gap-4">
+            <div class="landing-panel p-5">
+              <div class="text-sm font-semibold text-white">Контроль текущего дня</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">Видишь всю работу с записями и быстро реагируешь на изменения в расписании.</div>
+            </div>
+            <div class="landing-panel p-5">
+              <div class="text-sm font-semibold text-white">Живая база клиентов</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">История визитов, заметки, следующий контакт и ключевые детали всегда под рукой.</div>
+            </div>
+            <div class="landing-panel p-5">
+              <div class="text-sm font-semibold text-white">Финансы без догадок</div>
+              <div class="mt-2 text-sm leading-6 text-slate-300">CRM показывает выручку, потери и реальные проблемные точки бизнеса.</div>
+            </div>
+          </div>
+        </section>
 
-        <div class="mt-3 text-center">
-          <small>
+        <section class="landing-reveal rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(9,16,29,0.96))] p-6 shadow-[0_30px_90px_-35px_rgba(2,6,23,0.9)] sm:p-8 lg:p-10" style="--reveal-delay: 120ms;">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300/80">Вход</div>
+              <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white">Добро пожаловать обратно</h2>
+              <p class="mt-3 max-w-md text-sm leading-6 text-slate-400">Войди в рабочее пространство и продолжи управлять клиентами, записями и выручкой.</p>
+            </div>
+            <a href="/welcome/" class="hidden rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex">На лендинг</a>
+          </div>
+
+          {% if form.errors %}
+            <div class="mt-6 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-200">
+              Неверный логин или пароль
+            </div>
+          {% endif %}
+
+          <form method="POST" class="mt-8 space-y-5">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="w-full rounded-full bg-gradient-to-r from-teal-400 to-sky-400 px-5 py-3.5 text-sm font-semibold text-slate-950 shadow-[0_24px_60px_-28px_rgba(34,211,238,0.9)] transition hover:from-teal-300 hover:to-sky-300">
+              Войти
+            </button>
+          </form>
+
+          <div class="mt-6 text-center text-sm text-slate-400">
             Нет аккаунта?
-            <a href="/register/">Создать аккаунт</a>
-          </small>
-        </div>
-
+            <a href="/register/" class="font-semibold text-white transition hover:text-teal-200">Создать аккаунт</a>
+          </div>
+        </section>
       </div>
     </div>
   </div>
-</div>
 
+  <script>
+    document.querySelectorAll('.landing-reveal').forEach((item) => item.classList.add('is-visible'));
+  </script>
 </body>
 </html>

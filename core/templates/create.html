@@ -1,64 +1,85 @@
-{% extends "base.html" %}
+{% extends "core/base.html" %}
 
 {% block page_title %}
-Новая запись
+{{ crm_labels.create_booking_action }}
 {% endblock %}
 
 {% block page_subtitle %}
-Создание записи
+Заполните данные клиента, услуги, специалиста и времени
 {% endblock %}
 
 {% block content %}
+<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <section class="crm-panel p-6 sm:p-8">
+        <div class="flex flex-col gap-2 border-b border-slate-100 pb-6">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">Быстрое создание</div>
+            <h2 class="text-2xl font-semibold tracking-tight text-slate-950">{{ crm_labels.create_booking_action }}</h2>
+            <p class="max-w-2xl text-sm leading-6 text-slate-500">
+                Заполните форму за минуту: выберите клиента, услугу, специалиста и время. Если номер уже есть в базе, CRM подставит имя автоматически.
+            </p>
+        </div>
 
-<div class="card shadow-sm">
-<div class="card-body">
+        <form method="POST" class="mt-8 space-y-5">
+            {% csrf_token %}
 
-<h4 class="mb-4">Новая запись</h4>
+            <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                    <label class="text-sm font-medium text-slate-700" for="{{ form.client_name.id_for_label }}">{{ form.client_name.label }}</label>
+                    {{ form.client_name }}
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700" for="{{ form.client_phone.id_for_label }}">{{ form.client_phone.label }}</label>
+                    {{ form.client_phone }}
+                    <div id="clientStatus" class="mt-2 text-sm"></div>
+                </div>
+            </div>
 
-<form method="POST">
-{% csrf_token %}
+            <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                    <label class="text-sm font-medium text-slate-700" for="{{ form.barber.id_for_label }}">{{ form.barber.label }}</label>
+                    {{ form.barber }}
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700" for="{{ form.service.id_for_label }}">Услуга</label>
+                    {{ form.service }}
+                </div>
+            </div>
 
-<div class="mb-3">
-<label class="form-label">Имя клиента</label>
-{{ form.client_name }}
-</div>
+            <div>
+                <label class="text-sm font-medium text-slate-700" for="{{ form.start_at.id_for_label }}">Дата и время</label>
+                {{ form.start_at }}
+            </div>
 
-<div class="mb-3">
-<label class="form-label">Телефон</label>
-{{ form.client_phone }}
-<div id="clientStatus" class="form-text"></div>
-</div>
+            <div class="flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row">
+                <button class="inline-flex items-center justify-center rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
+                    {{ crm_labels.create_booking_action }}
+                </button>
 
-<div class="mb-3">
-<label class="form-label">Мастер</label>
-{{ form.barber }}
-</div>
+                <a href="/today/" class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50/80 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white">
+                    Назад
+                </a>
+            </div>
+        </form>
+    </section>
 
-<div class="mb-3">
-<label class="form-label">Услуга</label>
-{{ form.service }}
-</div>
+    <aside class="space-y-4">
+        <div class="rounded-[30px] border border-teal-200/70 bg-gradient-to-br from-teal-50 via-cyan-50 to-white p-6 shadow-[0_24px_80px_-36px_rgba(13,148,136,0.18)]">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">Подсказка</div>
+            <h3 class="mt-3 text-xl font-semibold text-slate-950">Сделайте работу с записями быстрее</h3>
+            <p class="mt-3 text-sm leading-6 text-slate-600">
+                Начинай с телефона клиента. Если он уже был в базе, CRM подтянет имя и ты избежишь дублей.
+            </p>
+        </div>
 
-<div class="mb-3">
-<label class="form-label">Дата и время</label>
-{{ form.start_at }}
-</div>
-
-<div class="d-flex gap-2">
-
-<button class="btn btn-success">
-Создать запись
-</button>
-
-<a href="/today/" class="btn btn-secondary">
-Назад
-</a>
-
-</div>
-
-</form>
-
-</div>
+        <div class="crm-muted-panel p-6">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Памятка</div>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                <li>Выбирай точное время, чтобы избежать пересечений.</li>
+                <li>После визита можно сразу отметить оплату.</li>
+                <li>Для постоянных клиентов лучше использовать один и тот же номер.</li>
+            </ul>
+        </div>
+    </aside>
 </div>
 
 <script>
@@ -67,7 +88,6 @@ const nameInput = document.querySelector("#id_client_name");
 const statusDiv = document.getElementById("clientStatus");
 
 phoneInput.addEventListener("blur", function() {
-
     const phone = phoneInput.value;
 
     if (!phone) {
@@ -78,25 +98,18 @@ phoneInput.addEventListener("blur", function() {
     fetch(`/api/find-client/?phone=${phone}`)
         .then(response => response.json())
         .then(data => {
-
             if (data.exists) {
                 nameInput.value = data.name;
-                statusDiv.innerHTML = "🟢 Клиент найден в базе";
-                statusDiv.className = "form-text text-success";
+                statusDiv.innerHTML = "{{ crm_labels.client_singular }} найден в базе";
+                statusDiv.className = "mt-2 text-sm font-medium text-emerald-600";
+            } else {
+                statusDiv.innerHTML = "Новый {{ crm_labels.client_singular|lower }} будет создан";
+                statusDiv.className = "mt-2 text-sm font-medium text-sky-600";
             }
-
-            else {
-                statusDiv.innerHTML = "🔵 Новый клиент будет создан";
-                statusDiv.className = "form-text text-primary";
-            }
-
         })
-
         .catch(() => {
             statusDiv.innerHTML = "";
         });
-
 });
 </script>
-
 {% endblock %}

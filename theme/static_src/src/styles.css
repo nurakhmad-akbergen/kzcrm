@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-slate-800;
+  }
+
+  label {
+    @apply block;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    @apply mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100;
+  }
+
+  form p {
+    @apply mb-5;
+  }
+}
+
+@layer components {
+  .crm-glass {
+    @apply border border-white/70 bg-white/70 shadow-[0_24px_80px_-36px_rgba(15,23,42,0.18)] backdrop-blur;
+  }
+
+  .crm-panel {
+    @apply rounded-[32px] border border-slate-200/70 bg-white/90 shadow-[0_24px_80px_-36px_rgba(15,23,42,0.14)];
+  }
+
+  .crm-muted-panel {
+    @apply rounded-[28px] border border-slate-200/80 bg-slate-50/90 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.12)];
+  }
+
+  .landing-panel {
+    @apply rounded-[30px] border border-white/10 bg-white/5 backdrop-blur;
+  }
+
+  .landing-reveal {
+    opacity: 0;
+    transform: translateY(32px) scale(0.985);
+    transition:
+      opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  .landing-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal,
+  .landing-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

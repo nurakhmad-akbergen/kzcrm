@@ -1,79 +1,78 @@
-{% extends "base.html" %}
+{% extends "core/base.html" %}
 
 {% block page_title %}
-Клиенты
+{{ crm_labels.client_plural }}
 {% endblock %}
 
 {% block page_subtitle %}
-CRM база клиентов
+CRM база {{ crm_labels.client_plural|lower }}
 {% endblock %}
 
 {% block content %}
+<section class="overflow-hidden rounded-[30px] border border-white/70 bg-white/90 shadow-[0_24px_80px_-32px_rgba(37,28,18,0.35)]">
+    <div class="border-b border-slate-100 px-6 py-5">
+        <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">База клиентов</div>
+        <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{{ crm_labels.client_plural }}</h3>
+    </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
+    <div class="border-b border-slate-100 px-6 py-5">
+        <form method="GET" class="flex flex-col gap-3 md:flex-row">
+            <input
+                type="text"
+                name="q"
+                value="{{ q }}"
+                placeholder="Поиск по имени, телефону или Instagram"
+                class="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+            >
+            <button class="rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
+                Найти
+            </button>
+        </form>
+    </div>
 
-        <table class="table table-striped">
-
-            <thead>
-                <tr>
-                    <th>Клиент</th>
-                    <th>Телефон</th>
-                    <th>Визитов</th>
-                    <th>Потратил</th>
-                    <th>Последний визит</th>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100">
+            <thead class="bg-slate-50/80">
+                <tr class="text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <th class="px-6 py-4">{{ crm_labels.client_singular }}</th>
+                    <th class="px-6 py-4">Телефон</th>
+                    <th class="px-6 py-4">Визитов</th>
+                    <th class="px-6 py-4">Потратил</th>
+                    <th class="px-6 py-4">Последний визит</th>
+                    <th class="px-6 py-4">Следующая запись</th>
                 </tr>
             </thead>
-
-            <tbody>
-
-            {% for client in clients %}
-
-                <tr>
-
-                    <td>
-                        <a href="/clients/{{ client.id }}/">
-                            <strong>{{ client.name }}</strong>
-                    </a>
-                    </td>
-
-                    <td>
-                        {{ client.phone }}
-                    </td>
-
-                    <td>
-                        {{ client.visits|default:0 }}
-                    </td>
-
-                    <td>
-                        {{ client.total_spent|default:0 }} ₸
-                    </td>
-
-                    <td>
-                        {% if client.last_visit %}
-                            {{ client.last_visit|date:"d.m.Y H:i" }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-
-                </tr>
-
-            {% empty %}
-
-                <tr>
-                    <td colspan="5" class="text-muted">
-                        Нет клиентов
-                    </td>
-                </tr>
-
-            {% endfor %}
-
+            <tbody class="divide-y divide-slate-100 bg-white">
+                {% for client in clients %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <a href="/clients/{{ client.id }}/" class="font-semibold text-slate-900 transition hover:text-amber-700">{{ client.name }}</a>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">{{ client.phone|default:"—" }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600">{{ client.visits|default:0 }}</td>
+                        <td class="px-6 py-4 text-sm font-semibold text-slate-900">{{ client.total_spent|default:0 }} ₸</td>
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {% if client.last_visit %}
+                                {{ client.last_visit|date:"d.m.Y H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {% if client.next_visit %}
+                                {{ client.next_visit|date:"d.m.Y H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-sm text-slate-500">Нет {{ crm_labels.client_plural|lower }}</td>
+                    </tr>
+                {% endfor %}
             </tbody>
-
         </table>
-
     </div>
-</div>
-
+</section>
 {% endblock %}

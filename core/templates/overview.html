@@ -1,0 +1,158 @@
+{% extends "core/base.html" %}
+
+{% block page_title %}Обзор бизнеса{% endblock %}
+{% block page_subtitle %}Главные показатели, ближайшие записи и точки роста на {{ today|date:"d.m.Y" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="crm-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Записи сегодня</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-950">{{ today_bookings_count }}</div>
+            <p class="mt-2 text-sm text-slate-500">Все запланированные визиты на текущий день.</p>
+        </div>
+        <div class="crm-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Выполнено</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-950">{{ completed_count }}</div>
+            <p class="mt-2 text-sm text-slate-500">Сколько записей уже дошло до статуса «Пришел».</p>
+        </div>
+        <div class="crm-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Выручка сегодня</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-950">{{ today_revenue }} ₸</div>
+            <p class="mt-2 text-sm text-slate-500">Оплаченные визиты за сегодняшний день.</p>
+        </div>
+        <div class="crm-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Выручка месяца</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-950">{{ month_revenue }} ₸</div>
+            <p class="mt-2 text-sm text-slate-500">Накопленная выручка с начала месяца.</p>
+        </div>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-3">
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Отмены сегодня</div>
+            <div class="mt-3 text-2xl font-semibold text-slate-950">{{ canceled_count }}</div>
+            <p class="mt-2 text-sm text-slate-500">Клиенты, которые отменили визит заранее.</p>
+        </div>
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">No-show</div>
+            <div class="mt-3 text-2xl font-semibold text-slate-950">{{ no_show_count }}</div>
+            <p class="mt-2 text-sm text-slate-500">Клиенты, которые не пришли без посещения.</p>
+        </div>
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Потери дня</div>
+            <div class="mt-3 text-2xl font-semibold text-slate-950">{{ lost_revenue_today }} ₸</div>
+            <p class="mt-2 text-sm text-slate-500">Потенциальная выручка, потерянная из-за отмен и no-show.</p>
+        </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div class="space-y-6">
+            <div class="crm-panel overflow-hidden">
+                <div class="border-b border-slate-100 px-6 py-5">
+                    <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Ближайшее</div>
+                    <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Следующие записи</h3>
+                </div>
+
+                <div class="divide-y divide-slate-100">
+                    {% for appointment in upcoming_appointments %}
+                        <div class="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-950">{{ appointment.client.name }}</div>
+                                <div class="mt-1 text-sm text-slate-500">{{ appointment.service.name }} · {{ appointment.barber.name }}</div>
+                            </div>
+                            <div class="text-sm font-medium text-slate-700">
+                                {{ appointment.start_at|date:"d.m H:i" }}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="px-6 py-12 text-center">
+                            <div class="text-lg font-semibold text-slate-900">Пока нет будущих записей</div>
+                            <p class="mt-2 text-sm text-slate-500">Добавь первую запись, чтобы здесь появился рабочий поток.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="crm-panel overflow-hidden">
+                <div class="border-b border-slate-100 px-6 py-5">
+                    <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Спрос</div>
+                    <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Популярные услуги</h3>
+                </div>
+
+                <div class="px-6 py-5">
+                    <div class="space-y-4">
+                        {% for service in top_services %}
+                            <div>
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="font-medium text-slate-800">{{ service.service__name }}</span>
+                                    <span class="text-slate-500">{{ service.total }} записей</span>
+                                </div>
+                                <div class="mt-2 h-2 rounded-full bg-slate-100">
+                                    <div class="h-2 rounded-full bg-teal-500" style="width:{% widthratio service.total 10 100 %}%"></div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="text-sm text-slate-500">Пока недостаточно данных по услугам.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="rounded-[30px] border border-teal-200/70 bg-gradient-to-br from-teal-50 via-cyan-50 to-white p-6 shadow-[0_24px_80px_-36px_rgba(13,148,136,0.18)]">
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">База бизнеса</div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                    <div>
+                        <div class="text-sm text-slate-500">{{ crm_labels.client_plural }}</div>
+                        <div class="mt-1 text-2xl font-semibold text-slate-950">{{ total_clients }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500">{{ crm_labels.staff_plural }}</div>
+                        <div class="mt-1 text-2xl font-semibold text-slate-950">{{ total_staff }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500">Услуги</div>
+                        <div class="mt-1 text-2xl font-semibold text-slate-950">{{ total_services }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="crm-muted-panel p-6">
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Прогресс настройки</div>
+                <div class="mt-4 space-y-3">
+                    {% for item in setup_progress %}
+                        <div class="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
+                            <div>
+                                <div class="text-sm font-medium text-slate-800">{{ item.label }}</div>
+                                <div class="text-xs text-slate-500">{{ item.value }} шт.</div>
+                            </div>
+                            {% if item.done %}
+                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Готово</span>
+                            {% else %}
+                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Нужно заполнить</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="crm-panel p-6">
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Быстрые действия</div>
+                <div class="mt-4 grid gap-3">
+                    <a href="{% url 'create_appointment' %}" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 transition hover:border-slate-300 hover:bg-white">
+                        Создать новую запись
+                    </a>
+                    <a href="{% url 'clients_list' %}" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 transition hover:border-slate-300 hover:bg-white">
+                        Открыть базу клиентов
+                    </a>
+                    <a href="{% url 'finance_dashboard' %}" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 transition hover:border-slate-300 hover:bg-white">
+                        Посмотреть финансы
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

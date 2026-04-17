@@ -1,0 +1,123 @@
+{% load static tailwind_tags %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ crm_labels.product_name }}</title>
+    {% tailwind_css %}
+</head>
+
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,_#f8fbfd,_#edf3f6_42%,_#e6edf1_100%)] text-slate-900">
+<div class="min-h-screen lg:grid lg:grid-cols-[290px_minmax(0,1fr)]">
+
+    <aside class="border-b border-slate-200/70 bg-[linear-gradient(180deg,_#0f172a_0%,_#162235_52%,_#12303b_100%)] text-slate-100 lg:min-h-screen lg:border-b-0 lg:border-r lg:border-slate-700/40">
+        <div class="flex items-center justify-between px-5 py-5 lg:block lg:px-6 lg:py-7">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-300/80">
+                    SaaS CRM
+                </div>
+                <div class="mt-2 text-2xl font-semibold tracking-tight">
+                    {{ crm_labels.product_name }}
+                </div>
+                <div class="mt-2 text-sm text-slate-300/70">
+                    {% if current_shop %}
+                        {{ current_shop.name }} · {{ crm_labels.industry_name }}
+                    {% else %}
+                        CRM
+                    {% endif %}
+                </div>
+            </div>
+
+            <a href="{% url 'create_appointment' %}"
+               class="inline-flex rounded-full bg-teal-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-900/20 transition hover:bg-teal-300 lg:hidden">
+                + {{ crm_labels.create_booking_action }}
+            </a>
+        </div>
+
+        <nav class="grid grid-cols-2 gap-2 border-t border-white/10 px-4 py-4 sm:grid-cols-3 lg:grid-cols-1 lg:px-4 lg:py-3">
+            <a href="{% url 'dashboard_overview' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                Обзор
+            </a>
+            <a href="{% url 'today_schedule' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/today/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                Расписание
+            </a>
+            <a href="{% url 'create_appointment' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/create/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                {{ crm_labels.create_booking_action }}
+            </a>
+            <a href="{% url 'barber_report' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/barbers/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                {{ crm_labels.staff_report_title }}
+            </a>
+            <a href="{% url 'finance_dashboard' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/finance/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                Финансы
+            </a>
+            <a href="{% url 'clients_list' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if '/clients/' in request.path %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                {{ crm_labels.client_plural }}
+            </a>
+            <a href="{% url 'settings_dashboard' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if '/settings/' in request.path %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                Настройки
+            </a>
+        </nav>
+
+        <div class="hidden px-4 pb-5 pt-3 lg:block">
+            <div class="rounded-[28px] border border-white/10 bg-white/5 p-4 backdrop-blur">
+                <div class="text-xs uppercase tracking-[0.25em] text-slate-300/55">Бизнес</div>
+                <div class="mt-2 text-lg font-semibold text-white">{{ current_shop.name|default:"CRM" }}</div>
+                <div class="mt-1 text-sm text-slate-300/70">Все записи, клиенты и аналитика под рукой.</div>
+                <a href="/admin/" class="mt-4 inline-flex text-sm font-medium text-teal-300 transition hover:text-teal-200">
+                    Django Admin
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="min-w-0">
+        <div class="px-4 py-4 sm:px-6 lg:px-10 lg:py-8">
+            <div class="crm-glass flex flex-col gap-4 rounded-[36px] p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Панель управления</div>
+                    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                        {% block page_title %}Панель{% endblock %}
+                    </h1>
+                    <p class="mt-2 max-w-2xl text-sm text-slate-500">
+                        {% block page_subtitle %}{% endblock %}
+                    </p>
+                </div>
+
+                <div class="hidden lg:block">
+                    <a href="{% url 'create_appointment' %}"
+                       class="inline-flex items-center rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-teal-900/20 transition hover:bg-teal-500">
+                        + {{ crm_labels.create_booking_action }}
+                    </a>
+                </div>
+            </div>
+
+            {% if messages %}
+                <div class="mt-6 space-y-3">
+                    {% for message in messages %}
+                        <div class="rounded-2xl border border-emerald-200/70 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-800 shadow-sm">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="mt-6">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
