@@ -217,9 +217,14 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
 
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+
 email_host = os.getenv("EMAIL_HOST")
 
-if email_host:
+if RESEND_API_KEY:
+    EMAIL_BACKEND = "core.email_backends.ResendEmailBackend"
+elif email_host:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = email_host
     EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -227,7 +232,6 @@ if email_host:
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
     EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
     EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() == "true"
-    EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
