@@ -989,33 +989,40 @@ def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                user = form.save()
-                industry_type = form.cleaned_data["industry_type"]
+            try:
+                with transaction.atomic():
+                    user = form.save()
+                    industry_type = form.cleaned_data["industry_type"]
 
-                shop = Shop.objects.create(
-                    owner=user,
-                    name=form.cleaned_data["shop_name"],
-                    industry_type=industry_type,
+                    shop = Shop.objects.create(
+                        owner=user,
+                        name=form.cleaned_data["shop_name"],
+                        industry_type=industry_type,
+                    )
+
+                    labels = get_shop_labels(shop)
+
+                    Barber.objects.create(
+                        shop=shop,
+                        name=f"Основной {labels['staff_singular'].lower()}",
+                        commission_percent=50
+                    )
+
+                    Service.objects.create(
+                        shop=shop,
+                        name="Базовая услуга",
+                        duration_min=60,
+                        price_kzt=5000
+                    )
+
+                    send_activation_email(request, user)
+            except Exception:
+                form.add_error(
+                    "email",
+                    "Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз."
                 )
-
-                labels = get_shop_labels(shop)
-
-                Barber.objects.create(
-                    shop=shop,
-                    name=f"Основной {labels['staff_singular'].lower()}",
-                    commission_percent=50
-                )
-
-                Service.objects.create(
-                    shop=shop,
-                    name="Базовая услуга",
-                    duration_min=60,
-                    price_kzt=5000
-                )
-
-            send_activation_email(request, user)
-            return redirect("activation_sent")
+            else:
+                return redirect("activation_sent")
     else:
         form = RegisterForm()
 
