@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,11 +22,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2)m&l%%%gsavbqpg%mw9$=(!_650$=1@^6crdlf*jw5edr@5!k'
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
-ALLOWED_HOSTS = ["*"]
+default_debug = "False" if os.getenv("RAILWAY_ENVIRONMENT") else "True"
+DEBUG = os.getenv("DEBUG", default_debug).lower() == "true"
+
+allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in allowed_hosts_env.split(",")
+    if host.strip()
+]
+
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+railway_public_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+if railway_public_domain and railway_public_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(railway_public_domain)
+
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["localhost"]
+
+csrf_trusted_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in csrf_trusted_origins_env.split(",")
+    if origin.strip()
+]
+
+if railway_public_domain:
+    railway_origin = f"https://{railway_public_domain}"
+    if railway_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_origin)
 
 
 # Application definition
@@ -79,12 +109,57 @@ TAILWIND_APP_NAME = 'theme'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    parsed_db = urlparse(database_url)
+    db_scheme = parsed_db.scheme
+
+    engine_map = {
+        "postgres": "django.db.backends.postgresql",
+        "postgresql": "django.db.backends.postgresql",
+        "pgsql": "django.db.backends.postgresql",
+        "sqlite": "django.db.backends.sqlite3",
     }
-}
+
+    db_engine = engine_map.get(db_scheme)
+    if not db_engine:
+        raise ValueError(f"Unsupported DATABASE_URL scheme: {db_scheme}")
+
+    if db_engine == "django.db.backends.sqlite3":
+        db_name = parsed_db.path or "/db.sqlite3"
+        DATABASES = {
+            "default": {
+                "ENGINE": db_engine,
+                "NAME": db_name.replace("///", "/"),
+            }
+        }
+    else:
+        db_options = {}
+        db_query = parse_qs(parsed_db.query)
+
+        if not DEBUG and db_query.get("sslmode", ["require"])[0] != "disable":
+            db_options["sslmode"] = db_query.get("sslmode", ["require"])[0]
+
+        DATABASES = {
+            "default": {
+                "ENGINE": db_engine,
+                "NAME": parsed_db.path.lstrip("/"),
+                "USER": parsed_db.username or "",
+                "PASSWORD": parsed_db.password or "",
+                "HOST": parsed_db.hostname or "",
+                "PORT": parsed_db.port or "",
+                "CONN_MAX_AGE": 600,
+                "OPTIONS": db_options,
+            }
+        }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -124,9 +199,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = []
 
 if not DEBUG:
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
