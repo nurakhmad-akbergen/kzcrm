@@ -1,6 +1,7 @@
 from datetime import timedelta
 import json
 import secrets
+import logging
 from urllib import error, parse, request as urllib_request
 
 from django.contrib import messages
@@ -34,6 +35,7 @@ from django.utils.dateparse import parse_date
 from .terminology import get_shop_labels
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -1016,10 +1018,11 @@ def register(request):
                     )
 
                     send_activation_email(request, user)
-            except Exception:
+            except Exception as exc:
+                logger.exception("Failed to send activation email during registration")
                 form.add_error(
                     "email",
-                    "Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз."
+                    f"Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз. Ошибка: {exc}"
                 )
             else:
                 return redirect("activation_sent")
