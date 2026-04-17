@@ -1,7 +1,8 @@
 from django import forms
+from django.db.models import Q
 from .models import Appointment, Barber, Client, Service, Shop
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm, UserCreationForm
 from .terminology import get_shop_labels
 
 INPUT_CLASS = (
@@ -59,6 +60,11 @@ class AppointmentForm(forms.ModelForm):
             self.fields["client_phone"].label = "Телефон"
 
 class RegisterForm(UserCreationForm):
+    email = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "placeholder": "you@example.com"})
+    )
+
     shop_name = forms.CharField(
         max_length=120,
         label="Название бизнеса",
@@ -88,7 +94,107 @@ class RegisterForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ["username", "shop_name", "industry_type", "password1", "password2"]
+        fields = ["email", "username", "shop_name", "industry_type", "password1", "password2"]
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Пользователь с таким email уже существует.")
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data["email"]
+        user.is_active = False
+        if commit:
+            user.save()
+        return user
+
+
+class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(
+        label="Email или логин",
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "you@example.com"})
+    )
+    password = forms.CharField(
+        label="Пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Введите пароль"}),
+    )
+
+    error_messages = {
+        "invalid_login": "Не удалось войти. Проверь email/логин и пароль.",
+        "inactive": "Аккаунт ещё не подтверждён. Проверьте письмо на email.",
+    }
+
+    def clean(self):
+        raw_username = self.cleaned_data.get("username", "").strip()
+        lookup_value = raw_username
+        if "@" in raw_username:
+            try:
+                user = User.objects.get(email__iexact=raw_username)
+                self.cleaned_data["username"] = user.get_username()
+                self.data = self.data.copy()
+                self.data["username"] = user.get_username()
+                lookup_value = user.get_username()
+            except User.DoesNotExist:
+                pass
+        cleaned_data = super().clean()
+
+        if self.user_cache is None:
+            possible_user = User.objects.filter(
+                Q(username__iexact=lookup_value) | Q(email__iexact=raw_username)
+            ).first()
+            password = self.cleaned_data.get("password")
+            if possible_user and password and possible_user.check_password(password) and not possible_user.is_active:
+                raise forms.ValidationError(
+                    self.error_messages["inactive"],
+                    code="inactive",
+                )
+
+        return cleaned_data
+
+
+class StyledPasswordResetForm(PasswordResetForm):
+    email = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "placeholder": "you@example.com"})
+    )
+
+
+class StyledSetPasswordForm(SetPasswordForm):
+    new_password1 = forms.CharField(
+        label="Новый пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Минимум 8 символов"}),
+    )
+    new_password2 = forms.CharField(
+        label="Подтвердите пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Повторите пароль"}),
+    )
+
+
+class GoogleSignupForm(forms.Form):
+    username = forms.CharField(
+        label="Логин",
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Логин владельца"}),
+    )
+    shop_name = forms.CharField(
+        label="Название бизнеса",
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Например, Azeka Dental"}),
+    )
+    industry_type = forms.ChoiceField(
+        label="Тип бизнеса",
+        choices=Shop.IndustryType.choices,
+        widget=forms.Select(attrs={"class": SELECT_CLASS}),
+    )
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Пользователь с таким логином уже существует.")
+        return username
         
         
 class BarberForm(forms.ModelForm):

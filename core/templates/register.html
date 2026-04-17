@@ -53,7 +53,7 @@
             <div>
               <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300/80">Регистрация</div>
               <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white">Создать аккаунт</h2>
-              <p class="mt-3 max-w-md text-sm leading-6 text-slate-400">Создай рабочее пространство и запусти CRM под свой тип бизнеса уже сейчас.</p>
+              <p class="mt-3 max-w-md text-sm leading-6 text-slate-400">Создай рабочее пространство, подтверди email и запусти CRM под свой тип бизнеса уже сейчас.</p>
             </div>
             <a href="/welcome/" class="hidden rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex">На лендинг</a>
           </div>
@@ -76,6 +76,17 @@
               Создать аккаунт
             </button>
           </form>
+
+          <div class="mt-5 flex items-center gap-4">
+            <div class="h-px flex-1 bg-white/10"></div>
+            <div class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">или</div>
+            <div class="h-px flex-1 bg-white/10"></div>
+          </div>
+
+          <a href="{% url 'google_auth_start' %}" class="mt-5 inline-flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10">
+            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-900">G</span>
+            Продолжить через Google
+          </a>
 
           <div class="mt-6 text-center text-sm text-slate-400">
             Уже есть аккаунт?

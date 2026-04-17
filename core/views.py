@@ -1,16 +1,31 @@
 from datetime import timedelta
 import json
+import secrets
+from urllib import error, parse, request as urllib_request
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model, login
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import TruncDay
+from django.core.mail import send_mail
+from django.conf import settings
+from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.contrib.auth import login
-from .forms import AppointmentStatusForm, ClientProfileForm, RegisterForm, ShopProfileForm
+from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from .forms import (
+    AppointmentStatusForm,
+    ClientProfileForm,
+    GoogleSignupForm,
+    RegisterForm,
+    ShopProfileForm,
+)
 import re
 from django.http import JsonResponse
 from .forms import AppointmentForm, BarberForm, ServiceForm
@@ -18,9 +33,232 @@ from .models import Appointment, Barber, Client, Payment, Service, Shop
 from django.utils.dateparse import parse_date
 from .terminology import get_shop_labels
 
+User = get_user_model()
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+
+
+def google_oauth_configured():
+    return bool(
+        settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET
+    )
+
+
+def build_google_redirect_uri(request):
+    return request.build_absolute_uri(reverse("google_auth_callback"))
+
+
+def exchange_google_code(request, code):
+    body = parse.urlencode(
+        {
+            "code": code,
+            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+            "redirect_uri": build_google_redirect_uri(request),
+            "grant_type": "authorization_code",
+        }
+    ).encode("utf-8")
+
+    req = urllib_request.Request(
+        GOOGLE_TOKEN_URL,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+
+    with urllib_request.urlopen(req, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_google_userinfo(access_token):
+    req = urllib_request.Request(
+        GOOGLE_USERINFO_URL,
+        headers={"Authorization": f"Bearer {access_token}"},
+        method="GET",
+    )
+
+    with urllib_request.urlopen(req, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def build_google_username(email):
+    base = re.sub(r"[^a-zA-Z0-9_]+", "", email.split("@", 1)[0]) or "user"
+    candidate = base[:20]
+    suffix = 1
+
+    while User.objects.filter(username__iexact=candidate).exists():
+        candidate = f"{base[:16]}{suffix}"
+        suffix += 1
+
+    return candidate
+
+
+def send_activation_email(request, user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    activation_url = request.build_absolute_uri(
+        reverse("activate_account", kwargs={"uidb64": uid, "token": token})
+    )
+
+    subject = "Подтверждение аккаунта в Azeka$Nurchik CRM"
+    message = render_to_string(
+        "emails/account_activation.txt",
+        {
+            "user": user,
+            "activation_url": activation_url,
+        },
+    )
+
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
+
 
 def landing_page(request):
     return render(request, "landing.html")
+
+
+def google_auth_start(request):
+    if not google_oauth_configured():
+        messages.error(request, "Google-вход пока не настроен.")
+        return redirect("login")
+
+    state = secrets.token_urlsafe(24)
+    request.session["google_oauth_state"] = state
+
+    params = parse.urlencode(
+        {
+            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "redirect_uri": build_google_redirect_uri(request),
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "online",
+            "state": state,
+            "prompt": "select_account",
+        }
+    )
+
+    return redirect(f"{GOOGLE_AUTH_URL}?{params}")
+
+
+def google_auth_callback(request):
+    expected_state = request.session.get("google_oauth_state")
+    state = request.GET.get("state")
+    code = request.GET.get("code")
+
+    if not expected_state or state != expected_state:
+        messages.error(request, "Не удалось подтвердить вход через Google.")
+        return redirect("login")
+
+    request.session.pop("google_oauth_state", None)
+
+    if not code:
+        messages.error(request, "Google не вернул код авторизации.")
+        return redirect("login")
+
+    try:
+        token_data = exchange_google_code(request, code)
+        userinfo = fetch_google_userinfo(token_data["access_token"])
+    except (KeyError, error.URLError, error.HTTPError, ValueError):
+        messages.error(request, "Не удалось завершить вход через Google.")
+        return redirect("login")
+
+    email = (userinfo.get("email") or "").strip().lower()
+    if not email:
+        messages.error(request, "Google не передал email пользователя.")
+        return redirect("login")
+
+    user = User.objects.filter(email__iexact=email).first()
+    if user:
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        login(request, user)
+        messages.success(request, "Вход через Google выполнен успешно.")
+        return redirect("dashboard_overview")
+
+    request.session["google_signup_profile"] = {
+        "email": email,
+        "full_name": userinfo.get("name", ""),
+        "given_name": userinfo.get("given_name", ""),
+    }
+    return redirect("google_signup")
+
+
+def google_signup(request):
+    profile = request.session.get("google_signup_profile")
+    if not profile:
+        messages.info(request, "Сначала выполните вход через Google.")
+        return redirect("login")
+
+    initial = {"username": build_google_username(profile["email"])}
+    if request.method == "POST":
+        form = GoogleSignupForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=form.cleaned_data["username"],
+                    email=profile["email"],
+                    password=None,
+                    is_active=True,
+                )
+                user.set_unusable_password()
+                user.save(update_fields=["password"])
+
+                shop = Shop.objects.create(
+                    owner=user,
+                    name=form.cleaned_data["shop_name"],
+                    industry_type=form.cleaned_data["industry_type"],
+                )
+
+                labels = get_shop_labels(shop)
+
+                Barber.objects.create(
+                    shop=shop,
+                    name=f"Основной {labels['staff_singular'].lower()}",
+                    commission_percent=50,
+                )
+                Service.objects.create(
+                    shop=shop,
+                    name="Базовая услуга",
+                    duration_min=60,
+                    price_kzt=5000,
+                )
+
+            request.session.pop("google_signup_profile", None)
+            login(request, user)
+            messages.success(request, "Аккаунт через Google успешно создан.")
+            return redirect("dashboard_overview")
+    else:
+        form = GoogleSignupForm(initial=initial)
+
+    return render(request, "google_signup.html", {"form": form, "google_email": profile["email"]})
+
+
+def activation_sent(request):
+    return render(request, "activation_sent.html")
+
+
+def activate_account(request, uidb64, token):
+    try:
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=user_id)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        messages.success(request, "Аккаунт подтверждён. Теперь можно войти.")
+        return render(request, "activation_result.html", {"success": True})
+
+    return render(request, "activation_result.html", {"success": False})
 
 
 @login_required
@@ -776,8 +1014,8 @@ def register(request):
                     price_kzt=5000
                 )
 
-            login(request, user)
-            return redirect("today_schedule")
+            send_activation_email(request, user)
+            return redirect("activation_sent")
     else:
         form = RegisterForm()
 

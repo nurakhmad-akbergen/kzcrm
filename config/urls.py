@@ -5,8 +5,18 @@ from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from core.views import barbers_settings
 from core.views import services_settings
+from core.forms import (
+    EmailOrUsernameAuthenticationForm,
+    StyledPasswordResetForm,
+    StyledSetPasswordForm,
+)
 
 from core.views import (
+    activate_account,
+    activation_sent,
+    google_auth_callback,
+    google_auth_start,
+    google_signup,
     landing_page,
     dashboard_overview,
     business_settings,
@@ -31,8 +41,48 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("", dashboard_overview, name="dashboard_overview"),
     path("welcome/", landing_page, name="landing_page"),
-    path("login/", auth_views.LoginView.as_view(template_name="login_plain.html"), name="login"),
+    path("auth/google/", google_auth_start, name="google_auth_start"),
+    path("auth/google/callback/", google_auth_callback, name="google_auth_callback"),
+    path("auth/google/signup/", google_signup, name="google_signup"),
+    path(
+        "login/",
+        auth_views.LoginView.as_view(
+            template_name="login_plain.html",
+            authentication_form=EmailOrUsernameAuthenticationForm,
+        ),
+        name="login",
+    ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("register/activation-sent/", activation_sent, name="activation_sent"),
+    path("activate/<uidb64>/<token>/", activate_account, name="activate_account"),
+    path(
+        "password-reset/",
+        auth_views.PasswordResetView.as_view(
+            template_name="password_reset_form.html",
+            email_template_name="emails/password_reset_email.txt",
+            subject_template_name="emails/password_reset_subject.txt",
+            form_class=StyledPasswordResetForm,
+        ),
+        name="password_reset",
+    ),
+    path(
+        "password-reset/done/",
+        auth_views.PasswordResetDoneView.as_view(template_name="password_reset_done.html"),
+        name="password_reset_done",
+    ),
+    path(
+        "reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name="password_reset_confirm.html",
+            form_class=StyledSetPasswordForm,
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "reset/done/",
+        auth_views.PasswordResetCompleteView.as_view(template_name="password_reset_complete.html"),
+        name="password_reset_complete",
+    ),
     path("today/", today_schedule, name="today_schedule"),
     path("create/", create_appointment, name="create_appointment"),
     path("done/<int:appointment_id>/", mark_done, name="mark_done"),

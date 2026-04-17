@@ -1,6 +1,13 @@
+from django.core import mail
 from django.contrib.auth.models import User
 from django.test import Client as DjangoClient, RequestFactory, TestCase
+from django.test.utils import override_settings
+from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
+from unittest.mock import patch
 
 from .context_processors import current_shop
 from .models import Appointment, Barber, Client, Payment, Service, Shop
@@ -81,8 +88,125 @@ class DashboardOverviewTests(TestCase):
         response = DjangoClient().get("/welcome/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Сервис, который помогает вести записи, клиентов и деньги в одном месте.")
-        self.assertContains(response, "Перейти к регистрации")
+        self.assertContains(response, "CRM, которая наводит порядок в записях, клиентах и деньгах.")
+        self.assertContains(response, "Начать бесплатно")
+
+
+class AuthenticationFlowTests(TestCase):
+    def test_register_creates_inactive_user_and_sends_activation_email(self):
+        response = DjangoClient().post(
+            "/register/",
+            {
+                "email": "owner@example.com",
+                "username": "owner-auth",
+                "shop_name": "Auth Studio",
+                "industry_type": Shop.IndustryType.DENTISTRY,
+                "password1": "Strongpass123!",
+                "password2": "Strongpass123!",
+            },
+            follow=True,
+        )
+
+        user = User.objects.get(username="owner-auth")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(user.is_active)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Подтверждение аккаунта", mail.outbox[0].subject)
+
+    def test_activation_link_activates_user(self):
+        user = User.objects.create_user(
+            username="inactive-user",
+            email="inactive@example.com",
+            password="Strongpass123!",
+            is_active=False,
+        )
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        response = DjangoClient().get(reverse("activate_account", args=[uid, token]))
+
+        user.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(user.is_active)
+        self.assertContains(response, "Email подтверждён")
+
+    def test_password_reset_sends_email(self):
+        User.objects.create_user(
+            username="reset-user",
+            email="reset@example.com",
+            password="Strongpass123!",
+        )
+
+        response = DjangoClient().post(
+            reverse("password_reset"),
+            {"email": "reset@example.com"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Восстановление пароля", mail.outbox[0].subject)
+
+
+@override_settings(
+    GOOGLE_OAUTH_CLIENT_ID="google-client-id",
+    GOOGLE_OAUTH_CLIENT_SECRET="google-client-secret",
+)
+class GoogleAuthTests(TestCase):
+    def test_google_auth_start_redirects_to_google(self):
+        response = DjangoClient().get(reverse("google_auth_start"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("accounts.google.com", response["Location"])
+
+    @patch("core.views.fetch_google_userinfo")
+    @patch("core.views.exchange_google_code")
+    def test_google_callback_logs_in_existing_user(self, mock_exchange_google_code, mock_fetch_google_userinfo):
+        user = User.objects.create_user(
+            username="google-existing",
+            email="google@example.com",
+            password="Strongpass123!",
+            is_active=True,
+        )
+        Shop.objects.create(owner=user, name="Google Existing", industry_type=Shop.IndustryType.BARBERSHOP)
+
+        mock_exchange_google_code.return_value = {"access_token": "token-123"}
+        mock_fetch_google_userinfo.return_value = {"email": "google@example.com", "name": "Google User"}
+
+        client = DjangoClient()
+        session = client.session
+        session["google_oauth_state"] = "state-123"
+        session.save()
+
+        response = client.get(
+            reverse("google_auth_callback"),
+            {"code": "google-code", "state": "state-123"},
+            follow=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("dashboard_overview"))
+
+    @patch("core.views.fetch_google_userinfo")
+    @patch("core.views.exchange_google_code")
+    def test_google_callback_redirects_new_user_to_signup(self, mock_exchange_google_code, mock_fetch_google_userinfo):
+        mock_exchange_google_code.return_value = {"access_token": "token-123"}
+        mock_fetch_google_userinfo.return_value = {"email": "new-google@example.com", "name": "New Google User"}
+
+        client = DjangoClient()
+        session = client.session
+        session["google_oauth_state"] = "state-123"
+        session.save()
+
+        response = client.get(
+            reverse("google_auth_callback"),
+            {"code": "google-code", "state": "state-123"},
+            follow=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("google_signup"))
 
 
 class ClientDetailTests(TestCase):
