@@ -448,14 +448,14 @@ def create_appointment(request):
     shop = request.user.shop
 
     if request.method == "POST":
-        # 🔥 ПЕРЕДАЁМ shop В ФОРМУ
+
         form = AppointmentForm(request.POST, shop=shop)
 
         if form.is_valid():
             name = form.cleaned_data["client_name"].strip()
             phone = form.cleaned_data["client_phone"].strip()
 
-            # очищаем телефон
+            # тут телефон оььратно возвращается не забыввй
             phone_clean = re.sub(r"\D", "", phone)
 
             if phone_clean.startswith("8"):
@@ -486,7 +486,7 @@ def create_appointment(request):
             return redirect("today_schedule")
 
     else:
-        # 🔥 И ЗДЕСЬ ТОЖЕ ПЕРЕДАЁМ shop
+
         form = AppointmentForm(shop=shop)
 
     return render(request, "create.html", {"form": form})
