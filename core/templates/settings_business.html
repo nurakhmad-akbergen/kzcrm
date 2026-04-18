@@ -5,43 +5,140 @@
 {% endblock %}
 
 {% block page_subtitle %}
-Основные параметры CRM и данные компании
+Данные компании, бренд и базовые параметры рабочего пространства
 {% endblock %}
 
 {% block content %}
-<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-    <section class="crm-panel p-6">
-        <div class="border-b border-slate-100 pb-4">
-            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Настройки</div>
-            <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Данные бизнеса</h3>
-        </div>
+<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section class="space-y-6">
+        <div class="crm-panel overflow-hidden">
+            <div class="border-b border-slate-100 px-6 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Профиль компании</div>
+                        <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Данные бизнеса</h3>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                            Название, контакты, часовой пояс и отраслевой шаблон, который определяет терминологию интерфейса.
+                        </p>
+                    </div>
+                    {% if can_change_industry_template %}
+                        <span class="inline-flex rounded-full bg-teal-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
+                            Шаблон можно менять
+                        </span>
+                    {% else %}
+                        <span class="inline-flex rounded-full bg-amber-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
+                            Шаблон зафиксирован
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
 
-        <form method="POST" class="mt-6 space-y-5">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button class="inline-flex rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
-                Сохранить настройки
-            </button>
-        </form>
+            <div class="border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600">
+                    Отраслевой шаблон влияет только на тексты и названия сущностей внутри CRM. Он не преобразует
+                    существующие услуги, сотрудников и записи.
+                </div>
+            </div>
+
+            <form method="POST" class="px-6 py-6">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                        {{ form.non_field_errors|join:", " }}
+                    </div>
+                {% endif %}
+
+                <div class="grid gap-5 md:grid-cols-2">
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 md:col-span-2">
+                        <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Бренд и позиционирование</div>
+                        <div class="mt-4 grid gap-5 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.name.id_for_label }}" class="text-sm font-semibold text-slate-900">{{ form.name.label }}</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="mt-2 text-sm font-medium text-rose-600">{{ form.name.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label for="{{ form.industry_type.id_for_label }}" class="text-sm font-semibold text-slate-900">{{ form.industry_type.label }}</label>
+                                {{ form.industry_type }}
+                                {% if form.industry_type.help_text %}
+                                    <div class="mt-2 text-xs leading-5 text-slate-500">{{ form.industry_type.help_text }}</div>
+                                {% endif %}
+                                {% if form.industry_type.errors %}
+                                    <div class="mt-2 text-sm font-medium text-rose-600">{{ form.industry_type.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-slate-200 bg-white p-5">
+                        <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Локация</div>
+                        <div class="mt-4">
+                            <label for="{{ form.city.id_for_label }}" class="text-sm font-semibold text-slate-900">{{ form.city.label }}</label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                                <div class="mt-2 text-sm font-medium text-rose-600">{{ form.city.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-slate-200 bg-white p-5">
+                        <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Контакты</div>
+                        <div class="mt-4">
+                            <label for="{{ form.phone.id_for_label }}" class="text-sm font-semibold text-slate-900">{{ form.phone.label }}</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <div class="mt-2 text-sm font-medium text-rose-600">{{ form.phone.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-slate-200 bg-white p-5 md:col-span-2">
+                        <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Системные параметры</div>
+                        <div class="mt-4 max-w-md">
+                            <label for="{{ form.timezone.id_for_label }}" class="text-sm font-semibold text-slate-900">{{ form.timezone.label }}</label>
+                            {{ form.timezone }}
+                            <div class="mt-2 text-xs leading-5 text-slate-500">
+                                Часовой пояс влияет на расписание, отчёты и расчёт показателей по дням.
+                            </div>
+                            {% if form.timezone.errors %}
+                                <div class="mt-2 text-sm font-medium text-rose-600">{{ form.timezone.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-500">
+                        Сохраняй здесь только постоянные параметры бизнеса, а не ежедневные рабочие данные.
+                    </p>
+                    <button class="inline-flex items-center justify-center rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
+                        Сохранить профиль
+                    </button>
+                </div>
+            </form>
+        </div>
     </section>
 
     <aside class="space-y-6">
-        <div class="crm-muted-panel p-6">
-            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Состояние базы</div>
+        <div class="rounded-[30px] border border-teal-200/70 bg-gradient-to-br from-teal-50 via-cyan-50 to-white p-6 shadow-[0_24px_80px_-36px_rgba(13,148,136,0.18)]">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">Состояние базы</div>
             <div class="mt-4 grid gap-3">
-                <div class="rounded-2xl bg-white px-4 py-4">
+                <div class="rounded-2xl bg-white/95 px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.client_plural }}</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.clients }}</div>
                 </div>
-                <div class="rounded-2xl bg-white px-4 py-4">
+                <div class="rounded-2xl bg-white/95 px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.staff_plural }}</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.staff }}</div>
                 </div>
-                <div class="rounded-2xl bg-white px-4 py-4">
+                <div class="rounded-2xl bg-white/95 px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Услуги</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.services }}</div>
                 </div>
-                <div class="rounded-2xl bg-white px-4 py-4">
+                <div class="rounded-2xl bg-white/95 px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ crm_labels.booking_plural }}</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ stats.appointments }}</div>
                 </div>
@@ -49,12 +146,27 @@
         </div>
 
         <div class="crm-panel p-6">
-            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Зачем это важно</div>
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Логика шаблона</div>
             <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <li>Тип бизнеса помогает адаптировать терминологию CRM под твою нишу.</li>
-                <li>Телефон и город нужны для будущих уведомлений и клиентского интерфейса.</li>
-                <li>Часовой пояс важен, чтобы расписание и аналитика считались корректно.</li>
+                <li>Отраслевой шаблон меняет названия сущностей: например, пациент/клиент и прием/запись.</li>
+                <li>Он помогает адаптировать интерфейс под нишу, но не меняет саму структуру данных.</li>
+                <li>Если бизнес уже работает в системе, шаблон фиксируется, чтобы не ломать смысл интерфейса.</li>
             </ul>
+        </div>
+
+        <div class="crm-panel p-6">
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Статус шаблона</div>
+            {% if can_change_industry_template %}
+                <p class="mt-4 text-sm leading-6 text-slate-600">
+                    Сейчас шаблон ещё можно поменять без противоречий, потому что в базе нет рабочих данных,
+                    которые завязаны на текущую терминологию.
+                </p>
+            {% else %}
+                <p class="mt-4 text-sm leading-6 text-slate-600">
+                    Смена шаблона заблокирована, потому что в CRM уже есть сотрудники, услуги или записи.
+                    Это защищает систему от нелогичной подмены терминов после начала работы.
+                </p>
+            {% endif %}
         </div>
     </aside>
 </div>

@@ -61,8 +61,12 @@
                class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if '/clients/' in request.path %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
                 {{ crm_labels.client_plural }}
             </a>
+            <a href="{% url 'profile_settings' %}"
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/profile/' or request.path == '/settings/business/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+                Профиль
+            </a>
             <a href="{% url 'settings_dashboard' %}"
-               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if '/settings/' in request.path %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
+               class="rounded-2xl px-4 py-3 text-sm font-medium transition {% if request.path == '/settings/' or request.path == '/settings/barbers/' or request.path == '/settings/services/' %}bg-white/95 text-slate-950 shadow-lg shadow-slate-950/10{% else %}text-slate-100/85 hover:bg-white/10 hover:text-white{% endif %}">
                 Настройки
             </a>
         </nav>

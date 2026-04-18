@@ -65,9 +65,15 @@
                 👥 {{ crm_labels.client_plural }}
             </a>
 
+            <a href="{% url 'profile_settings' %}"
+               class="block px-3 py-2 rounded-lg hover:bg-gray-800
+               {% if request.path == '/profile/' or request.path == '/settings/business/' %}bg-gray-800{% endif %}">
+                🪪 Профиль
+            </a>
+
             <a href="{% url 'settings_dashboard' %}"
                class="block px-3 py-2 rounded-lg hover:bg-gray-800
-               {% if '/settings/' in request.path %}bg-gray-800{% endif %}">
+               {% if request.path == '/settings/' or request.path == '/settings/barbers/' or request.path == '/settings/services/' %}bg-gray-800{% endif %}">
                 ⚙ Настройки
             </a>
 

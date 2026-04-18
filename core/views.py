@@ -316,17 +316,6 @@ def dashboard_overview(request):
         .aggregate(total=Sum("service__price_kzt"))["total"] or 0
     )
 
-    setup_progress = [
-        {"label": labels["staff_plural"], "done": total_staff > 0, "value": total_staff},
-        {"label": "Услуги", "done": total_services > 0, "value": total_services},
-        {"label": labels["client_plural"], "done": total_clients > 0, "value": total_clients},
-        {
-            "label": f"{labels['booking_plural']} на сегодня",
-            "done": today_bookings_count > 0,
-            "value": today_bookings_count,
-        },
-    ]
-
     top_services = (
         appointments
         .values("service__name")
@@ -347,7 +336,6 @@ def dashboard_overview(request):
         "no_show_count": no_show_count,
         "lost_revenue_today": lost_revenue_today,
         "upcoming_appointments": upcoming_appointments,
-        "setup_progress": setup_progress,
         "top_services": top_services,
     })
 
@@ -478,36 +466,31 @@ def settings_dashboard(request):
     shop = request.user.shop
     labels = get_shop_labels(shop)
 
-    setup_items = [
-        {
-            "label": "Название и тип бизнеса",
-            "done": bool(shop.name and shop.industry_type),
-            "hint": "Укажи базовые данные бизнеса, чтобы система была настроена под твою нишу.",
-        },
+    configuration_items = [
         {
             "label": f"{labels['staff_plural']}",
             "done": Barber.objects.filter(shop=shop, is_active=True).exists(),
-            "hint": "Добавь команду, чтобы можно было вести реальное расписание и распределять загрузку.",
+            "hint": "В системе есть хотя бы один активный сотрудник для распределения записей.",
         },
         {
             "label": "Услуги и цены",
             "done": Service.objects.filter(shop=shop, is_active=True).exists(),
-            "hint": "Каталог услуг нужен для записи клиентов, оплаты и аналитики по выручке.",
+            "hint": "Каталог услуг доступен для записи, оплаты и аналитики.",
         },
         {
-            "label": f"{labels['booking_plural']} на сегодня",
-            "done": Appointment.objects.filter(shop=shop, start_at__date=timezone.localdate()).exists(),
-            "hint": "Создай первую запись и проверь, что ежедневный рабочий процесс уже запущен.",
+            "label": "Часовой пояс",
+            "done": bool(shop.timezone),
+            "hint": "Расписание и ежедневные показатели опираются на установленный часовой пояс.",
         },
     ]
 
-    setup_completed = sum(1 for item in setup_items if item["done"])
-    setup_total = len(setup_items)
+    configured_count = sum(1 for item in configuration_items if item["done"])
+    configuration_total = len(configuration_items)
 
     return render(request, "settings_dashboard.html", {
-        "setup_items": setup_items,
-        "setup_completed": setup_completed,
-        "setup_total": setup_total,
+        "configuration_items": configuration_items,
+        "configured_count": configured_count,
+        "configuration_total": configuration_total,
     })
 
 
@@ -519,8 +502,8 @@ def business_settings(request):
         form = ShopProfileForm(request.POST, instance=shop)
         if form.is_valid():
             form.save()
-            messages.success(request, "Настройки бизнеса обновлены")
-            return redirect("business_settings")
+            messages.success(request, "Профиль бизнеса обновлен")
+            return redirect("profile_settings")
     else:
         form = ShopProfileForm(instance=shop)
 
@@ -530,11 +513,18 @@ def business_settings(request):
         "services": Service.objects.filter(shop=shop, is_active=True).count(),
         "appointments": Appointment.objects.filter(shop=shop).count(),
     }
+    can_change_industry_template = form.can_change_industry_template
 
     return render(request, "settings_business.html", {
         "form": form,
         "stats": stats,
+        "can_change_industry_template": can_change_industry_template,
     })
+
+
+@login_required
+def profile_settings(request):
+    return business_settings(request)
 
 
 @login_required

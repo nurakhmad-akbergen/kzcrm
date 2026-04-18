@@ -268,6 +268,18 @@ class AppointmentStatusTests(TestCase):
 
 
 class BusinessSettingsTests(TestCase):
+    def test_profile_route_is_available(self):
+        user = User.objects.create_user(username="owner5-profile", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Profile Route", industry_type=Shop.IndustryType.BARBERSHOP)
+
+        client_http = DjangoClient()
+        client_http.login(username="owner5-profile", password="12345678")
+        response = client_http.get(reverse("profile_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Профиль бизнеса")
+        self.assertContains(response, shop.name)
+
     def test_can_update_business_profile(self):
         user = User.objects.create_user(username="owner5", password="12345678")
         shop = Shop.objects.create(owner=user, name="Old Name", industry_type=Shop.IndustryType.BARBERSHOP)
@@ -292,7 +304,42 @@ class BusinessSettingsTests(TestCase):
         self.assertEqual(shop.name, "New Name")
         self.assertEqual(shop.industry_type, Shop.IndustryType.DENTISTRY)
         self.assertEqual(shop.city, "Almaty")
-        self.assertContains(response, "Настройки бизнеса обновлены")
+        self.assertContains(response, "Профиль бизнеса обновлен")
+
+    def test_locks_industry_template_after_operational_data_exists(self):
+        user = User.objects.create_user(username="owner5-locked", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Dental Flow", industry_type=Shop.IndustryType.DENTISTRY)
+        barber = Barber.objects.create(shop=shop, name="Doctor")
+        service = Service.objects.create(shop=shop, name="Cleaning", duration_min=60, price_kzt=12000)
+        client = Client.objects.create(shop=shop, name="Patient", phone="77071112233")
+        Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now() + timezone.timedelta(hours=3),
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner5-locked", password="12345678")
+        response = client_http.post(
+            "/settings/business/",
+            {
+                "name": "Dental Flow",
+                "industry_type": Shop.IndustryType.BARBERSHOP,
+                "city": "",
+                "phone": "",
+                "timezone": "Asia/Almaty",
+            },
+            follow=True,
+        )
+
+        shop.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(shop.industry_type, Shop.IndustryType.DENTISTRY)
+        self.assertContains(response, "Смена шаблона заблокирована")
+        self.assertContains(response, "Отраслевой шаблон")
 
 
 class ClientListLogicTests(TestCase):

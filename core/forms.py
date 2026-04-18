@@ -260,6 +260,26 @@ class AppointmentStatusForm(forms.Form):
 
 
 class ShopProfileForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        shop = self.instance
+        self.can_change_industry_template = not (
+            Barber.objects.filter(shop=shop, is_active=True).exists()
+            or Service.objects.filter(shop=shop, is_active=True).exists()
+            or Appointment.objects.filter(shop=shop).exists()
+        )
+
+        if not self.can_change_industry_template:
+            self.fields["industry_type"].disabled = True
+            self.fields["industry_type"].help_text = (
+                "Смена отраслевого шаблона недоступна после начала работы с услугами, "
+                "сотрудниками или записями."
+            )
+        else:
+            self.fields["industry_type"].help_text = (
+                "Шаблон меняет терминологию и тексты интерфейса, но не преобразует существующие данные."
+            )
+
     class Meta:
         model = Shop
         fields = ["name", "industry_type", "city", "phone", "timezone"]
@@ -272,7 +292,7 @@ class ShopProfileForm(forms.ModelForm):
         }
         labels = {
             "name": "Название бизнеса",
-            "industry_type": "Тип бизнеса",
+            "industry_type": "Отраслевой шаблон",
             "city": "Город",
             "phone": "Телефон",
             "timezone": "Часовой пояс",

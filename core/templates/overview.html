@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 
 {% block page_title %}Обзор бизнеса{% endblock %}
-{% block page_subtitle %}Главные показатели, ближайшие записи и точки роста на {{ today|date:"d.m.Y" }}{% endblock %}
+{% block page_subtitle %}Главные показатели и рабочая картина на {{ today|date:"d.m.Y" }}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -67,8 +67,8 @@
                         </div>
                     {% empty %}
                         <div class="px-6 py-12 text-center">
-                            <div class="text-lg font-semibold text-slate-900">Пока нет будущих записей</div>
-                            <p class="mt-2 text-sm text-slate-500">Добавь первую запись, чтобы здесь появился рабочий поток.</p>
+                            <div class="text-lg font-semibold text-slate-900">Записей в ближайшее время нет</div>
+                            <p class="mt-2 text-sm text-slate-500">На сегодня и следующие слоты пока не запланировано визитов.</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -120,21 +120,38 @@
             </div>
 
             <div class="crm-muted-panel p-6">
-                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Прогресс настройки</div>
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Рабочий статус</div>
                 <div class="mt-4 space-y-3">
-                    {% for item in setup_progress %}
-                        <div class="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-                            <div>
-                                <div class="text-sm font-medium text-slate-800">{{ item.label }}</div>
-                                <div class="text-xs text-slate-500">{{ item.value }} шт.</div>
-                            </div>
-                            {% if item.done %}
-                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Готово</span>
+                    <div class="rounded-2xl bg-white px-4 py-4">
+                        <div class="text-sm font-medium text-slate-800">День в работе</div>
+                        <div class="mt-1 text-sm text-slate-500">
+                            {% if today_bookings_count %}
+                                На сегодня запланировано {{ today_bookings_count }} {{ crm_labels.booking_plural|lower }}.
                             {% else %}
-                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Нужно заполнить</span>
+                                На сегодня в расписании пока нет записей.
                             {% endif %}
                         </div>
-                    {% endfor %}
+                    </div>
+                    <div class="rounded-2xl bg-white px-4 py-4">
+                        <div class="text-sm font-medium text-slate-800">Клиентская база</div>
+                        <div class="mt-1 text-sm text-slate-500">
+                            {% if total_clients %}
+                                В базе {{ total_clients }} {{ crm_labels.client_plural|lower }}.
+                            {% else %}
+                                Клиентская база пока пустая.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="rounded-2xl bg-white px-4 py-4">
+                        <div class="text-sm font-medium text-slate-800">Каталог услуг</div>
+                        <div class="mt-1 text-sm text-slate-500">
+                            {% if total_services %}
+                                Активных услуг: {{ total_services }}.
+                            {% else %}
+                                Активные услуги ещё не добавлены.
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
