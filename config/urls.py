@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from core.views import barbers_settings
+from core.views import payment_methods_settings
 from core.views import services_settings
 from core.forms import (
     EmailOrUsernameAuthenticationForm,
@@ -19,6 +20,8 @@ from core.views import (
     google_signup,
     landing_page,
     dashboard_overview,
+    access_status,
+    access_management,
     business_settings,
     profile_settings,
     today_schedule,
@@ -33,7 +36,8 @@ from core.views import (
     edit_service,
     delete_service,
     edit_barber,
-    delete_barber
+    delete_barber,
+    delete_payment_method,
 )
 from core.views import settings_dashboard
 from core.views import clients_list
@@ -41,8 +45,11 @@ from core.views import client_detail
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("", dashboard_overview, name="dashboard_overview"),
+    path("", landing_page, name="root_landing"),
+    path("dashboard/", dashboard_overview, name="dashboard_overview"),
     path("welcome/", landing_page, name="landing_page"),
+    path("access/", access_status, name="access_status"),
+    path("platform/access/", access_management, name="access_management"),
     path("auth/google/", google_auth_start, name="google_auth_start"),
     path("auth/google/callback/", google_auth_callback, name="google_auth_callback"),
     path("auth/google/signup/", google_signup, name="google_signup"),
@@ -95,12 +102,14 @@ urlpatterns = [
     path("api/find-client/", find_client, name="find_client"),
     path("settings/barbers/", barbers_settings, name="barbers_settings"),
     path("settings/services/", services_settings, name="services_settings"),
+    path("settings/payment-methods/", payment_methods_settings, name="payment_methods_settings"),
     path("settings/business/", business_settings, name="business_settings"),
     path("profile/", profile_settings, name="profile_settings"),
     path("settings/services/edit/<int:service_id>/", edit_service, name="edit_service"),
     path("settings/services/delete/<int:service_id>/", delete_service, name="delete_service"),
     path("settings/barbers/edit/<int:barber_id>/", edit_barber, name="edit_barber"),
     path("settings/barbers/delete/<int:barber_id>/", delete_barber, name="delete_barber"),
+    path("settings/payment-methods/delete/<int:method_id>/", delete_payment_method, name="delete_payment_method"),
     path("settings/", settings_dashboard, name="settings_dashboard"),
     path("clients/", clients_list, name="clients_list"),
     path("clients/<int:client_id>/", client_detail, name="client_detail"),

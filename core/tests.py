@@ -10,7 +10,7 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from .context_processors import current_shop
-from .models import Appointment, Barber, Client, Payment, Service, Shop
+from .models import Appointment, Barber, Client, Payment, PaymentMethod, Service, Shop
 from .terminology import get_shop_labels
 
 
@@ -71,7 +71,7 @@ class DashboardOverviewTests(TestCase):
 
         client_http = DjangoClient()
         client_http.login(username="owner2", password="12345678")
-        response = client_http.get("/")
+        response = client_http.get(reverse("dashboard_overview"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Обзор бизнеса")
@@ -81,8 +81,8 @@ class DashboardOverviewTests(TestCase):
     def test_guest_is_redirected_to_login_on_root(self):
         response = DjangoClient().get("/")
 
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("/login/", response["Location"])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CRM, которая наводит порядок в записях, клиентах и деньгах.")
 
     def test_guest_sees_marketing_landing_on_welcome(self):
         response = DjangoClient().get("/welcome/")
@@ -115,8 +115,13 @@ class AuthenticationFlowTests(TestCase):
         self.assertIn("Подтверждение аккаунта", mail.outbox[0].subject)
 
         shop = Shop.objects.get(owner=user)
+        self.assertEqual(shop.access_mode, Shop.AccessMode.TRIAL)
+        self.assertIsNotNone(shop.trial_ends_at)
+        self.assertGreater(shop.remaining_access_days, 0)
         self.assertEqual(shop.barbers.first().name, "Главный врач")
         self.assertEqual(shop.services.first().name, "Первичная консультация")
+        self.assertTrue(shop.payment_methods.filter(name="Наличные").exists())
+        self.assertTrue(shop.payment_methods.filter(name="Kaspi").exists())
 
     def test_activation_link_activates_user(self):
         user = User.objects.create_user(
@@ -235,8 +240,57 @@ class GoogleAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(username="google-seeded")
         shop = Shop.objects.get(owner=user)
+        self.assertEqual(shop.access_mode, Shop.AccessMode.TRIAL)
+        self.assertIsNotNone(shop.trial_ends_at)
         self.assertEqual(shop.barbers.first().name, "Главный врач")
         self.assertEqual(shop.services.first().name, "Первичная консультация")
+        self.assertTrue(shop.payment_methods.filter(name="Наличные").exists())
+
+
+class AccessControlTests(TestCase):
+    def test_expired_trial_redirects_to_access_page(self):
+        user = User.objects.create_user(username="expired-owner", password="12345678")
+        shop = Shop.objects.create(
+            owner=user,
+            name="Expired Trial",
+            access_mode=Shop.AccessMode.TRIAL,
+            trial_ends_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="expired-owner", password="12345678")
+
+        response = client_http.get("/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("access_status"))
+
+        access_response = client_http.get(reverse("access_status"))
+        self.assertEqual(access_response.status_code, 200)
+        self.assertContains(access_response, "Пробный период завершен")
+
+    def test_superuser_can_extend_shop_access(self):
+        superuser = User.objects.create_superuser(username="platform-admin", email="admin@example.com", password="12345678")
+        owner = User.objects.create_user(username="trial-owner", password="12345678")
+        shop = Shop.objects.create(
+            owner=owner,
+            name="Trial Shop",
+            access_mode=Shop.AccessMode.TRIAL,
+            trial_ends_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="platform-admin", password="12345678")
+        response = client_http.post(
+            reverse("access_management"),
+            {"shop_id": shop.id, "days": 30},
+            follow=True,
+        )
+
+        shop.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(shop.access_mode, Shop.AccessMode.SUBSCRIPTION)
+        self.assertIsNotNone(shop.subscription_ends_at)
+        self.assertTrue(shop.has_active_access)
 
 
 class ClientDetailTests(TestCase):
@@ -295,6 +349,38 @@ class AppointmentStatusTests(TestCase):
         self.assertEqual(appointment.status, Appointment.Status.NO_SHOW)
         self.assertEqual(appointment.comment, "Не ответил на звонок и не пришел")
         self.assertContains(response, "Статус записи обновлен")
+
+    def test_mark_done_saves_selected_payment_method(self):
+        user = User.objects.create_user(username="owner4-paid", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Payments Lab")
+        barber = Barber.objects.create(shop=shop, name="Specialist")
+        service = Service.objects.create(shop=shop, name="Consultation", duration_min=60, price_kzt=9000)
+        client = Client.objects.create(shop=shop, name="Dana", phone="77030000000")
+        payment_method = PaymentMethod.objects.create(shop=shop, name="Kaspi QR")
+        appointment = Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now() + timezone.timedelta(hours=2),
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner4-paid", password="12345678")
+        response = client_http.post(
+            reverse("mark_done", args=[appointment.id]),
+            {"payment_method": payment_method.id},
+            follow=True,
+        )
+
+        appointment.refresh_from_db()
+        payment = appointment.payment
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(appointment.status, Appointment.Status.DONE)
+        self.assertEqual(payment.payment_method, payment_method)
+        self.assertEqual(payment.method_label, "Kaspi QR")
+        self.assertTrue(payment.is_paid)
 
 
 class BusinessSettingsTests(TestCase):
@@ -450,6 +536,107 @@ class ServiceManagementTests(TestCase):
         response = client_http.get(f"/settings/services/delete/{service.id}/", follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Service.objects.filter(id=service.id).exists())
+
+
+class PaymentMethodSettingsTests(TestCase):
+    def test_can_add_payment_method(self):
+        user = User.objects.create_user(username="owner-payments", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Methods Hub")
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-payments", password="12345678")
+        response = client_http.post(
+            reverse("payment_methods_settings"),
+            {"name": "Kaspi QR"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(PaymentMethod.objects.filter(shop=shop, name="Kaspi QR").exists())
+        self.assertContains(response, "Способ оплаты добавлен")
+
+    def test_cannot_add_duplicate_payment_method(self):
+        user = User.objects.create_user(username="owner-payments-duplicate", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Methods Hub")
+        PaymentMethod.objects.create(shop=shop, name="Kaspi QR")
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-payments-duplicate", password="12345678")
+        response = client_http.post(
+            reverse("payment_methods_settings"),
+            {"name": "kaspi qr"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PaymentMethod.objects.filter(shop=shop, name__iexact="Kaspi QR").count(), 1)
+        self.assertContains(response, "Такой способ оплаты уже добавлен.")
+
+    def test_cannot_delete_used_payment_method(self):
+        user = User.objects.create_user(username="owner-payments-protected", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Methods Hub")
+        barber = Barber.objects.create(shop=shop, name="Specialist")
+        service = Service.objects.create(shop=shop, name="Consultation", duration_min=60, price_kzt=9000)
+        client = Client.objects.create(shop=shop, name="Dana", phone="77030000000")
+        payment_method = PaymentMethod.objects.create(shop=shop, name="Kaspi QR")
+        appointment = Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now() - timezone.timedelta(hours=2),
+            status=Appointment.Status.DONE,
+        )
+        Payment.objects.create(
+            appointment=appointment,
+            payment_method=payment_method,
+            method=Payment.Method.TRANSFER,
+            amount_kzt=service.price_kzt,
+            is_paid=True,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-payments-protected", password="12345678")
+        response = client_http.get(
+            reverse("delete_payment_method", args=[payment_method.id]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(PaymentMethod.objects.filter(id=payment_method.id).exists())
+        self.assertContains(response, "Нельзя удалить способ оплаты, который уже использовался в платежах")
+
+
+class FinanceDashboardTests(TestCase):
+    def test_finance_dashboard_uses_custom_payment_method_labels(self):
+        user = User.objects.create_user(username="finance-owner", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Finance Hub")
+        barber = Barber.objects.create(shop=shop, name="Specialist")
+        service = Service.objects.create(shop=shop, name="Consultation", duration_min=60, price_kzt=12000)
+        client = Client.objects.create(shop=shop, name="Client", phone="77070000000")
+        payment_method = PaymentMethod.objects.create(shop=shop, name="Kaspi QR")
+        appointment = Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now() - timezone.timedelta(days=1),
+            status=Appointment.Status.DONE,
+        )
+        Payment.objects.create(
+            appointment=appointment,
+            payment_method=payment_method,
+            method=Payment.Method.TRANSFER,
+            amount_kzt=service.price_kzt,
+            is_paid=True,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="finance-owner", password="12345678")
+        response = client_http.get(reverse("finance_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Kaspi QR", response.context["method_labels"])
 
 
 class StaffReportTests(TestCase):

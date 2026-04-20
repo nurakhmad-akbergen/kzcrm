@@ -1,6 +1,6 @@
 from django import forms
 from django.db.models import Q
-from .models import Appointment, Barber, Client, Service, Shop
+from .models import Appointment, Barber, Client, PaymentMethod, Service, Shop
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm, UserCreationForm
 from .terminology import get_shop_labels
@@ -298,4 +298,45 @@ class ShopProfileForm(forms.ModelForm):
             "city": "Город",
             "phone": "Телефон",
             "timezone": "Часовой пояс",
+        }
+
+
+class AccessExtensionForm(forms.Form):
+    days = forms.IntegerField(
+        min_value=1,
+        initial=30,
+        widget=forms.NumberInput(attrs={"class": INPUT_CLASS, "placeholder": "30"}),
+        label="Продлить на дней",
+    )
+
+
+class PaymentMethodForm(forms.ModelForm):
+    def __init__(self, *args, shop=None, **kwargs):
+        self.shop = shop
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+
+        if not self.shop:
+            return name
+
+        duplicate_exists = PaymentMethod.objects.filter(
+            shop=self.shop,
+            name__iexact=name,
+        ).exclude(id=self.instance.id).exists()
+
+        if duplicate_exists:
+            raise forms.ValidationError("Такой способ оплаты уже добавлен.")
+
+        return name
+
+    class Meta:
+        model = PaymentMethod
+        fields = ["name"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Например, Kaspi QR"}),
+        }
+        labels = {
+            "name": "Название способа оплаты",
         }

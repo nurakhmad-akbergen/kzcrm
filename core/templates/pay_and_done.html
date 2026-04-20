@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Оплата</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'core/img/favicon-32.png' %}?v=2">
+  <link rel="shortcut icon" href="{% static 'core/img/favicon-32.png' %}?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'core/img/apple-touch-icon.png' %}?v=2">
   {% tailwind_css %}
 </head>
 <body class="min-h-screen bg-[radial-gradient(circle_at_top,_#fff8ed,_#f7f5ef_55%,_#efe8de)] px-4 py-10 sm:px-6">
@@ -31,9 +34,9 @@
       {% csrf_token %}
       <div>
         <label class="text-sm font-medium text-slate-700">Способ оплаты</label>
-        <select name="method" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100">
-          {% for v, label in methods %}
-            <option value="{{ v }}">{{ label }}</option>
+        <select name="payment_method" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100">
+          {% for method in payment_methods %}
+            <option value="{{ method.id }}">{{ method.name }}</option>
           {% endfor %}
         </select>
       </div>

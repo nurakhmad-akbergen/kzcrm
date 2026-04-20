@@ -1,0 +1,73 @@
+{% extends "core/base.html" %}
+
+{% block page_title %}Доступ к платформе{% endblock %}
+{% block page_subtitle %}Статус пробного периода или подписки для вашего рабочего пространства{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+    <section class="crm-panel p-6">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Статус доступа</div>
+                <h2 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{{ shop.name }}</h2>
+                <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                    Для новых клиентов действует 7-дневный ознакомительный период. После его завершения доступ к CRM продолжается по подписочной модели.
+                </p>
+            </div>
+            <div class="rounded-[28px] border border-slate-200 bg-slate-50/80 px-5 py-4">
+                <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Режим</div>
+                <div class="mt-2 text-lg font-semibold text-slate-950">{{ shop.access_status_label }}</div>
+                {% if shop.access_expires_at %}
+                    <div class="mt-1 text-sm text-slate-500">До {{ shop.access_expires_at|date:"d.m.Y H:i" }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-3">
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Пробный период</div>
+            <div class="mt-3 text-2xl font-semibold text-slate-950">
+                {% if shop.access_mode == "TRIAL" and shop.remaining_access_days is not None %}
+                    {{ shop.remaining_access_days }} дн.
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+            <p class="mt-2 text-sm text-slate-500">Оставшееся время ознакомительного доступа.</p>
+        </div>
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Подписка</div>
+            <div class="mt-3 text-2xl font-semibold text-slate-950">
+                {% if shop.access_mode == "SUBSCRIPTION" and shop.remaining_access_days is not None %}
+                    {{ shop.remaining_access_days }} дн.
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+            <p class="mt-2 text-sm text-slate-500">Оставшийся оплаченный период по подписке.</p>
+        </div>
+        <div class="crm-muted-panel p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Доступ к CRM</div>
+            <div class="mt-3 text-2xl font-semibold {% if shop.has_active_access %}text-emerald-700{% else %}text-rose-600{% endif %}">
+                {% if shop.has_active_access %}Активен{% else %}Ограничен{% endif %}
+            </div>
+            <p class="mt-2 text-sm text-slate-500">После истечения срока часть разделов блокируется до продления.</p>
+        </div>
+    </section>
+
+    <section class="crm-panel p-6">
+        <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Что дальше</div>
+        {% if shop.has_active_access %}
+            <p class="mt-4 text-sm leading-6 text-slate-600">
+                Рабочее пространство активно. Если хотите заранее продлить доступ или перевести аккаунт на подписку,
+                обратитесь к команде KZCRMS.
+            </p>
+        {% else %}
+            <p class="mt-4 text-sm leading-6 text-slate-600">
+                Срок доступа завершен. Чтобы снова открыть все разделы CRM, продлите доступ по подписочной модели.
+            </p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

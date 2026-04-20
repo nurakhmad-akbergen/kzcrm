@@ -23,16 +23,18 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from .forms import (
+    AccessExtensionForm,
     AppointmentStatusForm,
     ClientProfileForm,
     GoogleSignupForm,
+    PaymentMethodForm,
     RegisterForm,
     ShopProfileForm,
 )
 import re
 from django.http import JsonResponse
 from .forms import AppointmentForm, BarberForm, ServiceForm
-from .models import Appointment, Barber, Client, Payment, Service, Shop
+from .models import Appointment, Barber, Client, Payment, PaymentMethod, Service, Shop
 from django.utils.dateparse import parse_date
 from .terminology import get_shop_labels, get_shop_seed_values
 
@@ -42,6 +44,22 @@ logger = logging.getLogger(__name__)
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+
+
+DEFAULT_PAYMENT_METHOD_NAMES = ["Наличные", "Kaspi", "Перевод", "Долг"]
+
+
+def ensure_default_payment_methods(shop):
+    existing_names = set(
+        PaymentMethod.objects.filter(shop=shop).values_list("name", flat=True)
+    )
+    new_methods = [
+        PaymentMethod(shop=shop, name=name)
+        for name in DEFAULT_PAYMENT_METHOD_NAMES
+        if name not in existing_names
+    ]
+    if new_methods:
+        PaymentMethod.objects.bulk_create(new_methods)
 
 
 def google_oauth_configured():
@@ -220,6 +238,8 @@ def google_signup(request):
                     name=form.cleaned_data["shop_name"],
                     industry_type=form.cleaned_data["industry_type"],
                 )
+                shop.start_trial(days=7)
+                shop.save(update_fields=["access_mode", "trial_ends_at", "subscription_ends_at"])
 
                 seed_values = get_shop_seed_values(shop)
 
@@ -234,6 +254,7 @@ def google_signup(request):
                     duration_min=60,
                     price_kzt=5000,
                 )
+                ensure_default_payment_methods(shop)
 
             request.session.pop("google_signup_profile", None)
             login(request, user)
@@ -263,6 +284,41 @@ def activate_account(request, uidb64, token):
         return render(request, "activation_result.html", {"success": True})
 
     return render(request, "activation_result.html", {"success": False})
+
+
+@login_required
+def access_status(request):
+    return render(request, "access_status.html", {"shop": request.user.shop})
+
+
+@login_required
+def access_management(request):
+    if not request.user.is_superuser:
+        return redirect("dashboard_overview")
+
+    if request.method == "POST":
+        form = AccessExtensionForm(request.POST)
+        shop = get_object_or_404(Shop, id=request.POST.get("shop_id"))
+        if form.is_valid():
+            shop.extend_subscription(form.cleaned_data["days"])
+            shop.save(update_fields=["access_mode", "subscription_ends_at"])
+            messages.success(request, f"Доступ для {shop.name} продлен.")
+            return redirect("access_management")
+    else:
+        form = AccessExtensionForm()
+
+    shops = sorted(
+        Shop.objects.select_related("owner").all(),
+        key=lambda item: (
+            item.has_active_access,
+            item.access_expires_at or timezone.now(),
+        ),
+    )
+
+    return render(request, "access_management.html", {
+        "shops": shops,
+        "extension_form": form,
+    })
 
 
 @login_required
@@ -326,6 +382,7 @@ def dashboard_overview(request):
     )
 
     return render(request, "overview.html", {
+        "shop": shop,
         "today": today,
         "today_bookings_count": today_bookings_count,
         "today_revenue": today_revenue,
@@ -808,9 +865,14 @@ def create_appointment(request):
 def mark_done(request, appointment_id):
     shop = request.user.shop
     appointment = get_object_or_404(Appointment, id=appointment_id, shop=shop)
+    payment_methods = PaymentMethod.objects.filter(shop=shop, is_active=True).order_by("name")
+
+    if not payment_methods.exists():
+        ensure_default_payment_methods(shop)
+        payment_methods = PaymentMethod.objects.filter(shop=shop, is_active=True).order_by("name")
 
     if request.method == "POST":
-        method = request.POST.get("method") or Payment.Method.CASH
+        payment_method = get_object_or_404(payment_methods, id=request.POST.get("payment_method"))
 
         appointment.status = Appointment.Status.DONE
         appointment.save()
@@ -818,13 +880,15 @@ def mark_done(request, appointment_id):
         payment, _created = Payment.objects.get_or_create(
             appointment=appointment,
             defaults={
-                "method": method,
+                "payment_method": payment_method,
+                "method": Payment.Method.TRANSFER,
                 "amount_kzt": appointment.service.price_kzt,
                 "is_paid": True,
             }
         )
 
-        payment.method = method
+        payment.payment_method = payment_method
+        payment.method = Payment.Method.TRANSFER
         payment.amount_kzt = appointment.service.price_kzt
         payment.is_paid = True
         payment.save()
@@ -834,7 +898,7 @@ def mark_done(request, appointment_id):
 
     return render(request, "pay_and_done.html", {
         "a": appointment,
-        "methods": Payment.Method.choices,
+        "payment_methods": payment_methods,
     })
 
 
@@ -998,10 +1062,19 @@ def finance_dashboard(request):
     daily_labels = [d["day"].strftime("%d.%m") for d in daily]
     daily_totals = [d["total"] for d in daily]
 
-    # методы оплаты
-    methods = payments.values("method").annotate(total=Sum("amount_kzt"))
-    method_labels = [m["method"] for m in methods]
-    method_totals = [m["total"] for m in methods]
+    # способы оплаты
+    method_choice_map = dict(Payment.Method.choices)
+    methods = (
+        payments
+        .values("payment_method__name", "method")
+        .annotate(total=Sum("amount_kzt"))
+        .order_by("-total")
+    )
+    method_labels = [
+        item["payment_method__name"] or method_choice_map.get(item["method"], item["method"])
+        for item in methods
+    ]
+    method_totals = [item["total"] for item in methods]
 
     # KPI
     today_total = payments.filter(
@@ -1116,6 +1189,42 @@ def services_settings(request):
         "form": form
     })
 
+
+@login_required
+def payment_methods_settings(request):
+    shop = request.user.shop
+    payment_methods = PaymentMethod.objects.filter(shop=shop, is_active=True)
+
+    if request.method == "POST":
+        form = PaymentMethodForm(request.POST, shop=shop)
+        if form.is_valid():
+            payment_method = form.save(commit=False)
+            payment_method.shop = shop
+            payment_method.save()
+            messages.success(request, "Способ оплаты добавлен")
+            return redirect("payment_methods_settings")
+    else:
+        form = PaymentMethodForm(shop=shop)
+
+    return render(request, "settings_payment_methods.html", {
+        "payment_methods": payment_methods,
+        "form": form,
+    })
+
+
+@login_required
+def delete_payment_method(request, method_id):
+    shop = request.user.shop
+    payment_method = get_object_or_404(PaymentMethod, id=method_id, shop=shop)
+
+    try:
+        payment_method.delete()
+        messages.success(request, "Способ оплаты удален")
+    except ProtectedError:
+        messages.error(request, "Нельзя удалить способ оплаты, который уже использовался в платежах")
+
+    return redirect("payment_methods_settings")
+
     
 def register(request):
     if request.method == "POST":
@@ -1131,6 +1240,8 @@ def register(request):
                         name=form.cleaned_data["shop_name"],
                         industry_type=industry_type,
                     )
+                    shop.start_trial(days=7)
+                    shop.save(update_fields=["access_mode", "trial_ends_at", "subscription_ends_at"])
 
                     seed_values = get_shop_seed_values(shop)
 
@@ -1146,6 +1257,7 @@ def register(request):
                         duration_min=60,
                         price_kzt=5000
                     )
+                    ensure_default_payment_methods(shop)
 
                     send_activation_email(request, user)
             except Exception as exc:

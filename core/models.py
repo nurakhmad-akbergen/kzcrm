@@ -28,6 +28,11 @@ class Shop(TimestampedModel):
         CLINIC = "CLINIC", "Клиника"
         GENERIC = "GENERIC", "Другое"
 
+    class AccessMode(models.TextChoices):
+        LEGACY = "LEGACY", "Внутренний доступ"
+        TRIAL = "TRIAL", "Пробный доступ"
+        SUBSCRIPTION = "SUBSCRIPTION", "Подписка"
+
     owner = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -43,9 +48,61 @@ class Shop(TimestampedModel):
     timezone = models.CharField(max_length=64, default="Asia/Almaty")
     city = models.CharField(max_length=80, blank=True)
     phone = models.CharField(max_length=30, blank=True)
+    access_mode = models.CharField(
+        max_length=20,
+        choices=AccessMode.choices,
+        default=AccessMode.LEGACY,
+    )
+    trial_ends_at = models.DateTimeField(blank=True, null=True)
+    subscription_ends_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return self.name
+
+    @property
+    def access_expires_at(self):
+        if self.access_mode == self.AccessMode.TRIAL:
+            return self.trial_ends_at
+        if self.access_mode == self.AccessMode.SUBSCRIPTION:
+            return self.subscription_ends_at
+        return None
+
+    @property
+    def has_active_access(self):
+        if self.access_mode == self.AccessMode.LEGACY:
+            return True
+
+        expires_at = self.access_expires_at
+        return bool(expires_at and expires_at >= timezone.now())
+
+    @property
+    def access_status_label(self):
+        if self.access_mode == self.AccessMode.LEGACY:
+            return "Внутренний доступ"
+        if self.access_mode == self.AccessMode.TRIAL:
+            return "Пробный доступ активен" if self.has_active_access else "Пробный период завершен"
+        return "Подписка активна" if self.has_active_access else "Подписка истекла"
+
+    @property
+    def remaining_access_days(self):
+        expires_at = self.access_expires_at
+        if not expires_at:
+            return None
+
+        delta = expires_at - timezone.now()
+        if delta.total_seconds() <= 0:
+            return 0
+        return delta.days + (1 if delta.seconds > 0 else 0)
+
+    def start_trial(self, days=7):
+        self.access_mode = self.AccessMode.TRIAL
+        self.trial_ends_at = timezone.now() + timezone.timedelta(days=days)
+        self.subscription_ends_at = None
+
+    def extend_subscription(self, days):
+        current_end = self.subscription_ends_at if self.subscription_ends_at and self.subscription_ends_at > timezone.now() else timezone.now()
+        self.access_mode = self.AccessMode.SUBSCRIPTION
+        self.subscription_ends_at = current_end + timezone.timedelta(days=days)
 
 
 # =========================================
@@ -107,6 +164,24 @@ class Service(TimestampedModel):
 
     def __str__(self):
         return f"{self.name} — {self.price_kzt}₸"
+
+
+class PaymentMethod(TimestampedModel):
+    shop = models.ForeignKey(
+        Shop,
+        on_delete=models.CASCADE,
+        related_name="payment_methods"
+    )
+
+    name = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        unique_together = ("shop", "name")
+
+    def __str__(self):
+        return self.name
 
 
 # =========================================
@@ -201,6 +276,14 @@ class Payment(TimestampedModel):
         related_name="payment"
     )
 
+    payment_method = models.ForeignKey(
+        PaymentMethod,
+        on_delete=models.PROTECT,
+        related_name="payments",
+        blank=True,
+        null=True,
+    )
+
     method = models.CharField(
         max_length=20,
         choices=Method.choices
@@ -211,4 +294,8 @@ class Payment(TimestampedModel):
 
     def __str__(self):
         status = "оплачено" if self.is_paid else "не оплачено"
-        return f"{self.amount_kzt}₸ — {self.get_method_display()} — {status}"
+        return f"{self.amount_kzt}₸ — {self.method_label} — {status}"
+
+    @property
+    def method_label(self):
+        return self.payment_method.name if self.payment_method else self.get_method_display()
