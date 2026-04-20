@@ -1,40 +1,88 @@
 {% extends "core/base.html" %}
 
 {% block page_title %}{{ crm_labels.staff_report_title }}{% endblock %}
-{% block page_subtitle %}Сегодня: {{ today }}{% endblock %}
+{% block page_subtitle %}Экономика команды за период {{ period_start|date:"d.m.Y" }} — {{ period_end|date:"d.m.Y" }}{% endblock %}
 
 {% block content %}
-<section class="overflow-hidden rounded-[30px] border border-white/70 bg-white/90 shadow-[0_24px_80px_-32px_rgba(37,28,18,0.35)]">
-    <div class="border-b border-slate-100 px-6 py-5">
-        <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Отчет</div>
-        <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{{ crm_labels.staff_report_title }}</h3>
-    </div>
+<div class="space-y-6">
+    <section class="crm-panel p-6">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Финансовый отчет</div>
+                <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{{ crm_labels.staff_report_title }}</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-500">
+                    Здесь видно не только выручку по каждому специалисту, но и выплату по проценту, фиксированную часть и валовую прибыль бизнеса.
+                </p>
+            </div>
 
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-            <thead class="bg-slate-50/80">
-                <tr class="text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <th class="px-6 py-4">{{ crm_labels.staff_singular }}</th>
-                    <th class="px-6 py-4">Выручка</th>
-                    <th class="px-6 py-4">Выплата</th>
-                    <th class="px-6 py-4">Прибыль владельца</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-                {% for row in data %}
-                    <tr>
-                        <td class="px-6 py-4 font-semibold text-slate-900">{{ row.barber.name }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-700">{{ row.total }} ₸</td>
-                        <td class="px-6 py-4 text-sm font-semibold text-emerald-700">{{ row.salary }} ₸</td>
-                        <td class="px-6 py-4 text-sm font-semibold text-sky-700">{{ row.owner_profit }} ₸</td>
+            <form method="GET" class="grid gap-3 sm:grid-cols-2 lg:w-auto">
+                <div>
+                    <label class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">С</label>
+                    <input type="date" name="date_from" value="{{ period_start|date:'Y-m-d' }}" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">По</label>
+                    <input type="date" name="date_to" value="{{ period_end|date:'Y-m-d' }}" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100">
+                </div>
+                <div class="sm:col-span-2">
+                    <button class="inline-flex rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">
+                        Применить период
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="overflow-hidden rounded-[30px] border border-white/70 bg-white/90 shadow-[0_24px_80px_-32px_rgba(37,28,18,0.35)]">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50/80">
+                    <tr class="text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        <th class="px-6 py-4">{{ crm_labels.staff_singular }}</th>
+                        <th class="px-6 py-4">Выручка</th>
+                        <th class="px-6 py-4">Пришло</th>
+                        <th class="px-6 py-4">Средний чек</th>
+                        <th class="px-6 py-4">Комиссия</th>
+                        <th class="px-6 py-4">Фикс</th>
+                        <th class="px-6 py-4">Итого выплата</th>
+                        <th class="px-6 py-4">Прибыль бизнеса</th>
                     </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500">Нет данных</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    {% for row in data %}
+                        <tr class="align-top">
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-slate-900">
+                                    <a href="{% url 'barber_detail' row.barber.id %}" class="transition hover:text-teal-700">{{ row.barber.name }}</a>
+                                </div>
+                                <div class="mt-1 text-sm text-slate-500">
+                                    {{ row.barber.commission_percent }}% комиссии{% if row.barber.fixed_salary_kzt %} · {{ row.barber.fixed_salary_kzt }} ₸ в месяц{% endif %}
+                                </div>
+                                <div class="mt-2 text-xs text-slate-400">
+                                    Отмены: {{ row.canceled_count }} · No-show: {{ row.no_show_count }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-900">{{ row.total }} ₸</td>
+                            <td class="px-6 py-4 text-sm text-slate-700">{{ row.completed_count }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-700">{{ row.average_check }} ₸</td>
+                            <td class="px-6 py-4 text-sm text-slate-700">{{ row.commission_payout }} ₸</td>
+                            <td class="px-6 py-4 text-sm text-slate-700">{{ row.fixed_salary }} ₸</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-emerald-700">{{ row.total_payout }} ₸</td>
+                            <td class="px-6 py-4 text-sm font-semibold {% if row.owner_profit < 0 %}text-rose-600{% else %}text-sky-700{% endif %}">
+                                {{ row.owner_profit }} ₸
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center">
+                                <div class="text-lg font-semibold text-slate-900">По выбранному периоду данных нет</div>
+                                <p class="mt-2 text-sm text-slate-500">Когда появятся оплаченные визиты, здесь будет финансовая картина по каждому специалисту.</p>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
 {% endblock %}

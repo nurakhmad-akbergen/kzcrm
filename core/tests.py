@@ -114,6 +114,10 @@ class AuthenticationFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Подтверждение аккаунта", mail.outbox[0].subject)
 
+        shop = Shop.objects.get(owner=user)
+        self.assertEqual(shop.barbers.first().name, "Главный врач")
+        self.assertEqual(shop.services.first().name, "Первичная консультация")
+
     def test_activation_link_activates_user(self):
         user = User.objects.create_user(
             username="inactive-user",
@@ -207,6 +211,32 @@ class GoogleAuthTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("google_signup"))
+
+    def test_google_signup_creates_industry_specific_defaults(self):
+        client = DjangoClient()
+        session = client.session
+        session["google_signup_profile"] = {
+            "email": "new-google@example.com",
+            "full_name": "New Google User",
+            "given_name": "New",
+        }
+        session.save()
+
+        response = client.post(
+            reverse("google_signup"),
+            {
+                "username": "google-seeded",
+                "shop_name": "Smile Flow",
+                "industry_type": Shop.IndustryType.DENTISTRY,
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user = User.objects.get(username="google-seeded")
+        shop = Shop.objects.get(owner=user)
+        self.assertEqual(shop.barbers.first().name, "Главный врач")
+        self.assertEqual(shop.services.first().name, "Первичная консультация")
 
 
 class ClientDetailTests(TestCase):
@@ -422,6 +452,129 @@ class ServiceManagementTests(TestCase):
         self.assertFalse(Service.objects.filter(id=service.id).exists())
 
 
+class StaffReportTests(TestCase):
+    def test_report_includes_commission_and_fixed_salary_for_period(self):
+        user = User.objects.create_user(username="owner-report", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Team Metrics")
+        barber = Barber.objects.create(
+            shop=shop,
+            name="Amina",
+            commission_percent=40,
+            fixed_salary_kzt=300000,
+        )
+        service = Service.objects.create(shop=shop, name="Consultation", duration_min=60, price_kzt=20000)
+        client = Client.objects.create(shop=shop, name="Client A", phone="77073334455")
+        start_at = timezone.now().replace(day=10, hour=11, minute=0, second=0, microsecond=0)
+        appointment = Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=start_at,
+            status=Appointment.Status.DONE,
+        )
+        Payment.objects.create(
+            appointment=appointment,
+            method=Payment.Method.CASH,
+            amount_kzt=20000,
+            is_paid=True,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-report", password="12345678")
+        response = client_http.get(
+            "/barbers/",
+            {
+                "date_from": start_at.date().replace(day=1).isoformat(),
+                "date_to": start_at.date().replace(day=15).isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        row = response.context["data"][0]
+        self.assertEqual(row["total"], 20000)
+        self.assertEqual(row["commission_payout"], 8000)
+        self.assertGreater(row["fixed_salary"], 0)
+        self.assertEqual(row["completed_count"], 1)
+        self.assertContains(response, "Итого выплата")
+        self.assertContains(response, "Фикс")
+
+
+class StaffDetailTests(TestCase):
+    def test_staff_detail_shows_metrics_and_allows_update(self):
+        user = User.objects.create_user(username="owner-staff-detail", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Staff Cards")
+        barber = Barber.objects.create(
+            shop=shop,
+            name="Dana",
+            commission_percent=35,
+            fixed_salary_kzt=150000,
+        )
+        service = Service.objects.create(shop=shop, name="Consult", duration_min=60, price_kzt=12000)
+        client = Client.objects.create(shop=shop, name="Aliya", phone="77074445566")
+        appointment = Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now() - timezone.timedelta(days=1),
+            status=Appointment.Status.DONE,
+        )
+        Payment.objects.create(
+            appointment=appointment,
+            method=Payment.Method.CASH,
+            amount_kzt=12000,
+            is_paid=True,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-staff-detail", password="12345678")
+
+        response = client_http.get(f"/staff/{barber.id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Карточка")
+        self.assertContains(response, "12000")
+        self.assertContains(response, client.name)
+
+        update_response = client_http.post(
+            f"/staff/{barber.id}/",
+            {
+                "name": "Dana Updated",
+                "commission_percent": 40,
+                "fixed_salary_kzt": 200000,
+            },
+            follow=True,
+        )
+        barber.refresh_from_db()
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(barber.name, "Dana Updated")
+        self.assertEqual(barber.commission_percent, 40)
+        self.assertEqual(barber.fixed_salary_kzt, 200000)
+
+    def test_schedule_links_to_client_and_staff_cards(self):
+        user = User.objects.create_user(username="owner-schedule-links", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Schedule Links")
+        barber = Barber.objects.create(shop=shop, name="Specialist")
+        service = Service.objects.create(shop=shop, name="Session", duration_min=60, price_kzt=5000)
+        client = Client.objects.create(shop=shop, name="Client", phone="77075556677")
+        Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=timezone.now(),
+            status=Appointment.Status.BOOKED,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner-schedule-links", password="12345678")
+        response = client_http.get("/today/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'/clients/{client.id}/')
+        self.assertContains(response, f'/staff/{barber.id}/')
+
+
 class ScheduleCenteringTests(TestCase):
     def test_today_is_centered_in_default_schedule_strip(self):
         user = User.objects.create_user(username="owner8", password="12345678")
@@ -433,6 +586,7 @@ class ScheduleCenteringTests(TestCase):
 
         week_days = list(response.context["week_days"])
         self.assertEqual(week_days[3], timezone.localdate())
+        self.assertEqual(response.context["mode"], "history")
 
     def test_schedule_filters_by_query_barber_and_status(self):
         user = User.objects.create_user(username="owner10", password="12345678")
@@ -468,3 +622,40 @@ class ScheduleCenteringTests(TestCase):
         appointments = list(response.context["appointments"])
         self.assertEqual(len(appointments), 1)
         self.assertEqual(appointments[0].client.name, "Aliya")
+
+    def test_schedule_without_date_shows_history_and_manual_date_filters_day(self):
+        user = User.objects.create_user(username="owner11", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Schedule History")
+        barber = Barber.objects.create(shop=shop, name="Specialist")
+        service = Service.objects.create(shop=shop, name="Session", duration_min=60, price_kzt=6000)
+        client = Client.objects.create(shop=shop, name="Dana", phone="77070001122")
+        today_dt = timezone.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        old_dt = today_dt - timezone.timedelta(days=10)
+
+        Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=today_dt,
+            status=Appointment.Status.BOOKED,
+        )
+        Appointment.objects.create(
+            shop=shop,
+            client=client,
+            barber=barber,
+            service=service,
+            start_at=old_dt,
+            status=Appointment.Status.DONE,
+        )
+
+        client_http = DjangoClient()
+        client_http.login(username="owner11", password="12345678")
+
+        history_response = client_http.get("/today/")
+        self.assertEqual(history_response.context["appointments_count"], 2)
+        self.assertEqual(history_response.context["mode"], "history")
+
+        daily_response = client_http.get("/today/", {"date": today_dt.date().isoformat()})
+        self.assertEqual(daily_response.context["appointments_count"], 1)
+        self.assertEqual(daily_response.context["mode"], "day")

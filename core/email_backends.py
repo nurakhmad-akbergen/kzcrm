@@ -28,7 +28,7 @@ class ResendEmailBackend(BaseEmailBackend):
                 headers={
                     "Authorization": f"Bearer {settings.RESEND_API_KEY}",
                     "Content-Type": "application/json",
-                    "User-Agent": "AzekaNurchikCRM/1.0",
+                    "User-Agent": "KZCRMS/1.0",
                 },
                 method="POST",
             )

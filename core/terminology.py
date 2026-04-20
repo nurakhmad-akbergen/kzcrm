@@ -1,5 +1,5 @@
 DEFAULT_LABELS = {
-    "product_name": "CRM",
+    "product_name": "KZCRMS",
     "client_singular": "Клиент",
     "client_plural": "Клиенты",
     "staff_singular": "Специалист",
@@ -10,16 +10,19 @@ DEFAULT_LABELS = {
     "staff_report_title": "Отчет по команде",
 }
 
+DEFAULT_SEED_VALUES = {
+    "staff_name": "Главный специалист",
+    "service_name": "Первичная консультация",
+}
+
 
 INDUSTRY_LABELS = {
     "BARBERSHOP": {
-        "product_name": "Barber CRM",
         "staff_singular": "Мастер",
         "staff_plural": "Мастера",
         "staff_report_title": "Отчет по мастерам",
     },
     "DENTISTRY": {
-        "product_name": "Dental CRM",
         "client_singular": "Пациент",
         "client_plural": "Пациенты",
         "staff_singular": "Врач",
@@ -30,13 +33,11 @@ INDUSTRY_LABELS = {
         "staff_report_title": "Отчет по врачам",
     },
     "BEAUTY_SALON": {
-        "product_name": "Beauty CRM",
         "staff_singular": "Мастер",
         "staff_plural": "Мастера",
         "staff_report_title": "Отчет по мастерам",
     },
     "CLINIC": {
-        "product_name": "Clinic CRM",
         "client_singular": "Пациент",
         "client_plural": "Пациенты",
         "staff_singular": "Специалист",
@@ -45,6 +46,29 @@ INDUSTRY_LABELS = {
         "booking_plural": "Приемы",
         "create_booking_action": "Создать прием",
         "staff_report_title": "Отчет по специалистам",
+    },
+}
+
+INDUSTRY_SEED_VALUES = {
+    "BARBERSHOP": {
+        "staff_name": "Старший мастер",
+        "service_name": "Мужская стрижка",
+    },
+    "DENTISTRY": {
+        "staff_name": "Главный врач",
+        "service_name": "Первичная консультация",
+    },
+    "BEAUTY_SALON": {
+        "staff_name": "Старший мастер",
+        "service_name": "Базовая процедура",
+    },
+    "CLINIC": {
+        "staff_name": "Главный специалист",
+        "service_name": "Первичный прием",
+    },
+    "GENERIC": {
+        "staff_name": "Главный специалист",
+        "service_name": "Основная услуга",
     },
 }
 
@@ -58,3 +82,13 @@ def get_shop_labels(shop):
     labels.update(INDUSTRY_LABELS.get(shop.industry_type, {}))
     labels["industry_name"] = shop.get_industry_type_display()
     return labels
+
+
+def get_shop_seed_values(shop):
+    seed_values = DEFAULT_SEED_VALUES.copy()
+
+    if not shop:
+        return seed_values
+
+    seed_values.update(INDUSTRY_SEED_VALUES.get(shop.industry_type, {}))
+    return seed_values

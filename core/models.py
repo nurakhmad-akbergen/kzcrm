@@ -63,6 +63,7 @@ class Barber(TimestampedModel):
     phone = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
     commission_percent = models.PositiveSmallIntegerField(default=50)
+    fixed_salary_kzt = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.name} ({self.shop.name})"

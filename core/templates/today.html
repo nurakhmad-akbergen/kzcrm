@@ -1,7 +1,13 @@
 {% extends "core/base.html" %}
 
 {% block page_title %}Расписание{% endblock %}
-{% block page_subtitle %}День: {{ day }} • Доход: {{ revenue }} ₸ • Потери: {{ lost_revenue }} ₸{% endblock %}
+{% block page_subtitle %}
+{% if mode == "day" %}
+День: {{ day|date:"d.m.Y" }} • Записей: {{ appointments_count }} • Доход: {{ revenue }} ₸ • Потери: {{ lost_revenue }} ₸
+{% else %}
+Общий журнал записей • Найдено: {{ appointments_count }} • Доход: {{ revenue }} ₸ • Потери: {{ lost_revenue }} ₸
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <section class="crm-panel p-6">
@@ -22,8 +28,8 @@
     <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {% for d in week_days %}
             <a href="?date={{ d|date:'Y-m-d' }}"
-               class="rounded-[24px] border px-4 py-4 text-center transition {% if d == day %}border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 text-slate-900 shadow-[0_18px_40px_-28px_rgba(13,148,136,0.28)]{% else %}border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white{% endif %}">
-                <div class="text-xs uppercase tracking-[0.25em] {% if d == day %}text-teal-600{% else %}text-slate-400{% endif %}">{{ d|date:"D" }}</div>
+               class="rounded-[24px] border px-4 py-4 text-center transition {% if d == calendar_day %}border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 text-slate-900 shadow-[0_18px_40px_-28px_rgba(13,148,136,0.28)]{% else %}border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white{% endif %}">
+                <div class="text-xs uppercase tracking-[0.25em] {% if d == calendar_day %}text-teal-600{% else %}text-slate-400{% endif %}">{{ d|date:"D" }}</div>
                 <div class="mt-2 text-2xl font-semibold">{{ d|date:"d" }}</div>
             </a>
         {% endfor %}
@@ -32,10 +38,9 @@
 
 <section class="crm-panel mt-6 p-6">
     <form method="GET" class="grid gap-4 lg:grid-cols-[160px_minmax(0,1fr)_220px_220px_160px]">
-        <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
         <div>
             <label class="text-sm font-medium text-slate-700">Дата</label>
-            <input type="date" name="date_display" value="{{ day|date:'Y-m-d' }}" disabled class="mt-2 block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 shadow-sm">
+            <input type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
         </div>
         <div>
             <label class="text-sm font-medium text-slate-700">Поиск</label>
@@ -63,14 +68,30 @@
             <button class="w-full rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500">Фильтр</button>
         </div>
     </form>
+    <div class="mt-4 flex flex-wrap gap-3">
+        <a href="{% url 'today_schedule' %}" class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white">
+            Вся история
+        </a>
+        <a href="?date={{ calendar_day|date:'Y-m-d' }}" class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white">
+            Только {{ calendar_day|date:"d.m.Y" }}
+        </a>
+    </div>
 </section>
 
 {% if appointments %}
 <section class="crm-panel mt-6 overflow-hidden">
     <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
-            <h3 class="text-lg font-semibold text-slate-950">Записи на день</h3>
-            <p class="mt-1 text-sm text-slate-500">Отмечай завершение, отмену и no-show прямо по ходу дня.</p>
+            <h3 class="text-lg font-semibold text-slate-950">
+                {% if mode == "day" %}Записи на день{% else %}История записей{% endif %}
+            </h3>
+            <p class="mt-1 text-sm text-slate-500">
+                {% if mode == "day" %}
+                    Отмечай завершение, отмену и no-show прямо по ходу дня.
+                {% else %}
+                    Журнал всех записей с фильтрами по дате, статусу, клиенту и специалисту.
+                {% endif %}
+            </p>
         </div>
     </div>
 
@@ -78,7 +99,7 @@
         <table class="min-w-full divide-y divide-slate-100">
             <thead class="bg-slate-50/80">
                 <tr class="text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <th class="px-6 py-4">Время</th>
+                    <th class="px-6 py-4">{% if mode == "day" %}Время{% else %}Дата и время{% endif %}</th>
                     <th class="px-6 py-4">{{ crm_labels.client_singular }}</th>
                     <th class="px-6 py-4">Услуга</th>
                     <th class="px-6 py-4">{{ crm_labels.staff_singular }}</th>
@@ -89,15 +110,29 @@
             <tbody class="divide-y divide-slate-100 bg-white/80">
                 {% for a in appointments %}
                     <tr>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">{{ a.start_at|date:"H:i" }}</td>
+                        <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">
+                            {% if mode == "day" %}
+                                {{ a.start_at|date:"H:i" }}
+                            {% else %}
+                                {{ a.start_at|date:"d.m.Y H:i" }}
+                            {% endif %}
+                        </td>
                         <td class="px-6 py-4 text-sm text-slate-700">
-                            <div>{{ a.client.name }}</div>
+                            <div>
+                                <a href="{% url 'client_detail' a.client.id %}" class="font-semibold text-slate-900 transition hover:text-teal-700">
+                                    {{ a.client.name }}
+                                </a>
+                            </div>
                             {% if a.comment %}
                                 <div class="mt-1 text-xs text-slate-400">{{ a.comment }}</div>
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 text-sm text-slate-700">{{ a.service.name }}</td>
-                        <td class="px-6 py-4 text-sm text-slate-700">{{ a.barber.name }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-700">
+                            <a href="{% url 'barber_detail' a.barber.id %}" class="font-semibold text-slate-900 transition hover:text-teal-700">
+                                {{ a.barber.name }}
+                            </a>
+                        </td>
                         <td class="px-6 py-4 text-sm">
                             {% if a.status == "DONE" %}
                                 <span class="inline-flex rounded-full bg-emerald-100/80 px-3 py-1 text-xs font-semibold text-emerald-700">Пришел</span>
@@ -131,11 +166,38 @@
             </tbody>
         </table>
     </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+        <div class="flex flex-col gap-4 border-t border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm text-slate-500">
+                Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+            </div>
+            <div class="flex items-center gap-2">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if day %}&date={{ day|date:'Y-m-d' }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_barber %}&barber={{ selected_barber }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}"
+                       class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white">
+                        Назад
+                    </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if day %}&date={{ day|date:'Y-m-d' }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_barber %}&barber={{ selected_barber }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}"
+                       class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white">
+                        Вперед
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 </section>
 {% else %}
 <div class="mt-6 rounded-[30px] border border-teal-100/80 bg-teal-50/70 px-6 py-8 text-center shadow-sm">
-    <div class="text-lg font-semibold text-teal-900">На {{ day|date:"d.m.Y" }} записей нет</div>
-    <p class="mt-2 text-sm text-teal-700">Можно создать первую запись и начать заполнять расписание.</p>
+    {% if mode == "day" %}
+        <div class="text-lg font-semibold text-teal-900">На {{ day|date:"d.m.Y" }} записей нет</div>
+        <p class="mt-2 text-sm text-teal-700">На выбранную дату в расписании пока ничего нет.</p>
+    {% else %}
+        <div class="text-lg font-semibold text-teal-900">По заданным фильтрам записей нет</div>
+        <p class="mt-2 text-sm text-teal-700">Попробуй изменить дату, статус или убрать часть фильтров.</p>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

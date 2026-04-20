@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Подтверждение аккаунта | Azeka$Nurchik CRM</title>
+  <title>Подтверждение аккаунта | KZCRMS</title>
   {% tailwind_css %}
 </head>
 <body class="min-h-screen bg-[#07111f] text-slate-100">
@@ -15,7 +15,7 @@
         {% if success %}
           <div class="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300/90">Аккаунт активирован</div>
           <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white">Email подтверждён</h1>
-          <p class="mt-5 text-base leading-8 text-slate-300">Аккаунт уже активен. Теперь можно войти и начать работу в CRM.</p>
+          <p class="mt-5 text-base leading-8 text-slate-300">Аккаунт уже активен. Теперь можно войти в рабочее пространство.</p>
           <a href="{% url 'login' %}" class="mt-8 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-teal-400 to-sky-400 px-7 py-4 text-base font-semibold text-slate-950 transition hover:from-teal-300 hover:to-sky-300">Войти в кабинет</a>
         {% else %}
           <div class="text-xs font-semibold uppercase tracking-[0.35em] text-amber-300/90">Ссылка недействительна</div>

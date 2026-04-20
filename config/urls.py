@@ -29,6 +29,7 @@ from core.views import (
     finance_dashboard,
     register,
     find_client,
+    barber_detail,
     edit_service,
     delete_service,
     edit_barber,
@@ -103,6 +104,7 @@ urlpatterns = [
     path("settings/", settings_dashboard, name="settings_dashboard"),
     path("clients/", clients_list, name="clients_list"),
     path("clients/<int:client_id>/", client_detail, name="client_detail"),
+    path("staff/<int:barber_id>/", barber_detail, name="barber_detail"),
     
 ]
 

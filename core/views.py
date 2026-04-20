@@ -1,4 +1,5 @@
 from datetime import timedelta
+from calendar import monthrange
 import json
 import secrets
 import logging
@@ -13,6 +14,7 @@ from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import TruncDay
 from django.core.mail import send_mail
+from django.core.paginator import Paginator
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404, redirect, render
@@ -32,7 +34,7 @@ from django.http import JsonResponse
 from .forms import AppointmentForm, BarberForm, ServiceForm
 from .models import Appointment, Barber, Client, Payment, Service, Shop
 from django.utils.dateparse import parse_date
-from .terminology import get_shop_labels
+from .terminology import get_shop_labels, get_shop_seed_values
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -104,7 +106,7 @@ def send_activation_email(request, user):
         reverse("activate_account", kwargs={"uidb64": uid, "token": token})
     )
 
-    subject = "Подтверждение аккаунта в Azeka$Nurchik CRM"
+    subject = "Подтверждение аккаунта в KZCRMS"
     message = render_to_string(
         "emails/account_activation.txt",
         {
@@ -219,16 +221,16 @@ def google_signup(request):
                     industry_type=form.cleaned_data["industry_type"],
                 )
 
-                labels = get_shop_labels(shop)
+                seed_values = get_shop_seed_values(shop)
 
                 Barber.objects.create(
                     shop=shop,
-                    name=f"Основной {labels['staff_singular'].lower()}",
+                    name=seed_values["staff_name"],
                     commission_percent=50,
                 )
                 Service.objects.create(
                     shop=shop,
-                    name="Базовая услуга",
+                    name=seed_values["service_name"],
                     duration_min=60,
                     price_kzt=5000,
                 )
@@ -416,6 +418,74 @@ def client_detail(request, client_id):
 
 
 @login_required
+def barber_detail(request, barber_id):
+    shop = request.user.shop
+    barber = get_object_or_404(Barber, id=barber_id, shop=shop)
+
+    if request.method == "POST":
+        form = BarberForm(request.POST, instance=barber)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Карточка специалиста обновлена")
+            return redirect("barber_detail", barber_id=barber.id)
+    else:
+        form = BarberForm(instance=barber)
+
+    appointments = (
+        Appointment.objects
+        .filter(barber=barber)
+        .select_related("client", "service")
+        .order_by("-start_at")
+    )
+
+    now = timezone.now()
+    upcoming_appointment = (
+        appointments
+        .filter(
+            start_at__gte=now,
+            status__in=[Appointment.Status.BOOKED, Appointment.Status.CONFIRMED],
+        )
+        .order_by("start_at")
+        .first()
+    )
+    last_completed_appointment = (
+        appointments
+        .filter(start_at__lt=now, status=Appointment.Status.DONE)
+        .order_by("-start_at")
+        .first()
+    )
+
+    total_revenue = (
+        Payment.objects
+        .filter(appointment__barber=barber, is_paid=True)
+        .aggregate(total=Sum("amount_kzt"))["total"]
+        or 0
+    )
+    completed_count = appointments.filter(status=Appointment.Status.DONE).count()
+    canceled_count = appointments.filter(status=Appointment.Status.CANCELED).count()
+    no_show_count = appointments.filter(status=Appointment.Status.NO_SHOW).count()
+    avg_check = (
+        Payment.objects
+        .filter(appointment__barber=barber, is_paid=True)
+        .aggregate(avg=Avg("amount_kzt"))["avg"]
+        or 0
+    )
+
+    return render(request, "barber_detail.html", {
+        "barber": barber,
+        "appointments": appointments,
+        "form": form,
+        "total_revenue": total_revenue,
+        "completed_count": completed_count,
+        "canceled_count": canceled_count,
+        "no_show_count": no_show_count,
+        "avg_check": round(avg_check, 2),
+        "upcoming_appointment": upcoming_appointment,
+        "last_completed_appointment": last_completed_appointment,
+    })
+
+
+@login_required
 def clients_list(request):
     shop = request.user.shop
     q = request.GET.get("q", "").strip()
@@ -595,29 +665,32 @@ def today_schedule(request):
     q = request.GET.get("q", "").strip()
     barber_id = request.GET.get("barber")
     status = request.GET.get("status", "").strip()
+    page_number = request.GET.get("page", "1")
 
     # безопасный парсинг даты
     day = parse_date(date_str) if date_str else None
 
-    if not day:
-        day = timezone.localdate()
+    calendar_day = day or timezone.localdate()
 
-    week_start = day - timedelta(days=3)
-    week_end = day + timedelta(days=3)
+    week_start = calendar_day - timedelta(days=3)
+    week_end = calendar_day + timedelta(days=3)
 
     week_days = [
         week_start + timedelta(days=i)
         for i in range(7)
     ]
 
-    prev_week = day - timedelta(days=7)
-    next_week = day + timedelta(days=7)
+    prev_week = calendar_day - timedelta(days=7)
+    next_week = calendar_day + timedelta(days=7)
 
     appointments = (
         Appointment.objects
-        .filter(shop=shop, start_at__date=day)
+        .filter(shop=shop)
         .select_related("client", "barber", "service")
     )
+
+    if day:
+        appointments = appointments.filter(start_at__date=day)
 
     if q:
         appointments = appointments.filter(
@@ -632,12 +705,15 @@ def today_schedule(request):
     if status:
         appointments = appointments.filter(status=status)
 
-    appointments = appointments.order_by("start_at")
+    appointments = appointments.order_by("-start_at" if not day else "start_at")
+
+    paginator = Paginator(appointments, 50)
+    page_obj = paginator.get_page(page_number)
 
     revenue = (
         Payment.objects.filter(
             appointment__shop=shop,
-            appointment__start_at__date=day,
+            appointment__in=appointments.values("id"),
             is_paid=True
         )
         .aggregate(total=Sum("amount_kzt"))["total"]
@@ -649,10 +725,14 @@ def today_schedule(request):
         .aggregate(total=Sum("service__price_kzt"))["total"] or 0
     )
 
+    mode = "day" if day else "history"
+
     return render(request, "today.html", {
-        "appointments": appointments,
+        "appointments": page_obj.object_list,
+        "page_obj": page_obj,
         "barbers": Barber.objects.filter(shop=shop, is_active=True).order_by("name"),
         "day": day,
+        "calendar_day": calendar_day,
         "week_days": week_days,
         "week_start": week_start,
         "week_end": week_end,
@@ -660,9 +740,11 @@ def today_schedule(request):
         "next_week": next_week,
         "revenue": revenue,
         "lost_revenue": lost_revenue,
+        "appointments_count": paginator.count,
         "q": q,
         "selected_barber": str(barber_id or ""),
         "selected_status": status,
+        "mode": mode,
         "status_choices": [
             ("BOOKED", "Записан"),
             ("CONFIRMED", "Подтвержден"),
@@ -792,33 +874,91 @@ def update_appointment_status(request, appointment_id, status):
 def barber_report(request):
     shop = request.user.shop
     today = timezone.localdate()
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+
+    period_start = parse_date(date_from) if date_from else today.replace(day=1)
+    period_end = parse_date(date_to) if date_to else today
+
+    if not period_start:
+        period_start = today.replace(day=1)
+    if not period_end:
+        period_end = today
+    if period_end < period_start:
+        period_start, period_end = period_end, period_start
+
+    def calculate_prorated_salary(monthly_salary, start_date, end_date):
+        if not monthly_salary:
+            return 0
+
+        total = 0
+        cursor = start_date.replace(day=1)
+
+        while cursor <= end_date:
+            days_in_month = monthrange(cursor.year, cursor.month)[1]
+            month_start = cursor
+            month_end = cursor.replace(day=days_in_month)
+            overlap_start = max(start_date, month_start)
+            overlap_end = min(end_date, month_end)
+
+            if overlap_start <= overlap_end:
+                overlap_days = (overlap_end - overlap_start).days + 1
+                total += monthly_salary * overlap_days / days_in_month
+
+            if cursor.month == 12:
+                cursor = cursor.replace(year=cursor.year + 1, month=1, day=1)
+            else:
+                cursor = cursor.replace(month=cursor.month + 1, day=1)
+
+        return round(total, 2)
+
     data = []
 
-    for barber in Barber.objects.filter(shop=shop):
-        total = (
-            Payment.objects.filter(
-                appointment__shop=shop,
-                appointment__barber=barber,
-                appointment__start_at__date=today,
-                is_paid=True
-            )
-            .aggregate(total=Sum("amount_kzt"))["total"]
-            or 0
+    for barber in Barber.objects.filter(shop=shop, is_active=True):
+        payments = Payment.objects.filter(
+            appointment__shop=shop,
+            appointment__barber=barber,
+            appointment__start_at__date__gte=period_start,
+            appointment__start_at__date__lte=period_end,
+            is_paid=True,
+        )
+        appointments = Appointment.objects.filter(
+            shop=shop,
+            barber=barber,
+            start_at__date__gte=period_start,
+            start_at__date__lte=period_end,
         )
 
-        salary = total * barber.commission_percent / 100
-        owner_profit = total - salary
+        total = payments.aggregate(total=Sum("amount_kzt"))["total"] or 0
+        completed_count = appointments.filter(status=Appointment.Status.DONE).count()
+        canceled_count = appointments.filter(status=Appointment.Status.CANCELED).count()
+        no_show_count = appointments.filter(status=Appointment.Status.NO_SHOW).count()
+        average_check = round(total / completed_count, 2) if completed_count else 0
+        commission_payout = round(total * barber.commission_percent / 100, 2)
+        fixed_salary = calculate_prorated_salary(barber.fixed_salary_kzt, period_start, period_end)
+        total_payout = round(commission_payout + fixed_salary, 2)
+        owner_profit = round(total - total_payout, 2)
 
         data.append({
             "barber": barber,
             "total": total,
-            "salary": round(salary, 2),
-            "owner_profit": round(owner_profit, 2),
+            "completed_count": completed_count,
+            "canceled_count": canceled_count,
+            "no_show_count": no_show_count,
+            "average_check": average_check,
+            "commission_payout": commission_payout,
+            "fixed_salary": fixed_salary,
+            "total_payout": total_payout,
+            "owner_profit": owner_profit,
         })
+
+    data.sort(key=lambda row: (-row["total"], row["barber"].name))
 
     return render(request, "barber_report.html", {
         "data": data,
         "today": today,
+        "period_start": period_start,
+        "period_end": period_end,
     })
 
 
@@ -992,17 +1132,17 @@ def register(request):
                         industry_type=industry_type,
                     )
 
-                    labels = get_shop_labels(shop)
+                    seed_values = get_shop_seed_values(shop)
 
                     Barber.objects.create(
                         shop=shop,
-                        name=f"Основной {labels['staff_singular'].lower()}",
+                        name=seed_values["staff_name"],
                         commission_percent=50
                     )
 
                     Service.objects.create(
                         shop=shop,
-                        name="Базовая услуга",
+                        name=seed_values["service_name"],
                         duration_min=60,
                         price_kzt=5000
                     )

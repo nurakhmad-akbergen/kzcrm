@@ -23,7 +23,7 @@ class AppointmentForm(forms.ModelForm):
 
     client_name = forms.CharField(
         label="Имя клиента",
-        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Например, Алия"})
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Введите имя клиента"})
     )
 
     client_phone = forms.CharField(
@@ -68,7 +68,7 @@ class RegisterForm(UserCreationForm):
     shop_name = forms.CharField(
         max_length=120,
         label="Название бизнеса",
-        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Например, Dias Shop"})
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Название компании или студии"})
     )
 
     industry_type = forms.ChoiceField(
@@ -79,7 +79,7 @@ class RegisterForm(UserCreationForm):
 
     username = forms.CharField(
         label="Логин",
-        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Логин владельца"})
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Придумайте логин"})
     )
 
     password1 = forms.CharField(
@@ -178,11 +178,11 @@ class StyledSetPasswordForm(SetPasswordForm):
 class GoogleSignupForm(forms.Form):
     username = forms.CharField(
         label="Логин",
-        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Логин владельца"}),
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Придумайте логин"}),
     )
     shop_name = forms.CharField(
         label="Название бизнеса",
-        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Например, Azeka Dental"}),
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Название компании или студии"}),
     )
     industry_type = forms.ChoiceField(
         label="Тип бизнеса",
@@ -200,16 +200,18 @@ class GoogleSignupForm(forms.Form):
 class BarberForm(forms.ModelForm):
     class Meta:
         model = Barber
-        fields = ["name", "commission_percent"]
+        fields = ["name", "commission_percent", "fixed_salary_kzt"]
 
         widgets = {
-            "name": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Имя сотрудника"}),
+            "name": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Имя специалиста"}),
             "commission_percent": forms.NumberInput(attrs={"class": INPUT_CLASS, "placeholder": "50"}),
+            "fixed_salary_kzt": forms.NumberInput(attrs={"class": INPUT_CLASS, "placeholder": "0"}),
         }
 
         labels = {
             "name": "Имя",
             "commission_percent": "Комиссия (%)",
+            "fixed_salary_kzt": "Фиксированная зарплата в месяц (₸)",
         }
         
         

@@ -1,74 +1,82 @@
 {% extends "core/base.html" %}
 
 {% block page_title %}
-{{ client.name }}
+{{ barber.name }}
 {% endblock %}
 
 {% block page_subtitle %}
-Карточка {{ crm_labels.client_singular|lower }}
+Карточка {{ crm_labels.staff_singular|lower }}
 {% endblock %}
 
 {% block content %}
 <div class="grid gap-6 2xl:grid-cols-[360px_minmax(0,1fr)]">
     <div class="space-y-6">
         <section class="crm-panel p-6">
-            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{{ crm_labels.client_singular }}</div>
-            <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{{ client.name }}</h2>
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{{ crm_labels.staff_singular }}</div>
+            <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{{ barber.name }}</h2>
             <div class="mt-5 space-y-3 text-sm text-slate-600">
                 <div class="rounded-2xl bg-slate-50 px-4 py-3">
                     <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Телефон</div>
-                    <div class="mt-1 font-medium text-slate-900">{{ client.phone|default:"Не указан" }}</div>
+                    <div class="mt-1 font-medium text-slate-900">{{ barber.phone|default:"Не указан" }}</div>
                 </div>
                 <div class="rounded-2xl bg-slate-50 px-4 py-3">
-                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Instagram</div>
-                    <div class="mt-1 font-medium text-slate-900">{{ client.instagram|default:"Не указан" }}</div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Комиссия</div>
+                    <div class="mt-1 font-medium text-slate-900">{{ barber.commission_percent }}%</div>
+                </div>
+                <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Фиксированная часть</div>
+                    <div class="mt-1 font-medium text-slate-900">{{ barber.fixed_salary_kzt }} ₸ / месяц</div>
                 </div>
             </div>
 
             <div class="mt-6 rounded-[28px] bg-gradient-to-br from-teal-600 to-cyan-700 p-5 text-white shadow-xl shadow-teal-900/20">
-                <div class="text-xs uppercase tracking-[0.25em] text-teal-100">LTV клиента</div>
-                <div class="mt-3 text-3xl font-semibold">{{ total_spent }} ₸</div>
-                <div class="mt-1 text-sm text-teal-100">Оплаченная сумма за всё время</div>
+                <div class="text-xs uppercase tracking-[0.25em] text-teal-100">Выручка специалиста</div>
+                <div class="mt-3 text-3xl font-semibold">{{ total_revenue }} ₸</div>
+                <div class="mt-1 text-sm text-teal-100">Оплаченные услуги за всё время</div>
             </div>
         </section>
 
         <section class="crm-muted-panel p-6">
             <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Показатели</div>
-            <div class="mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div class="rounded-2xl bg-white px-4 py-4">
-                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Всего визитов</div>
-                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ visit_count }}</div>
-                </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <div class="rounded-2xl bg-white px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Завершено</div>
-                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ done_count }}</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ completed_count }}</div>
                 </div>
                 <div class="rounded-2xl bg-white px-4 py-4">
                     <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Средний чек</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ avg_check }} ₸</div>
                 </div>
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Отмены</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ canceled_count }}</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-4">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">No-show</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ no_show_count }}</div>
+                </div>
             </div>
         </section>
 
         <section class="crm-panel p-6">
-            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Следующий контакт</div>
-            {% if next_appointment %}
+            <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Ближайшая запись</div>
+            {% if upcoming_appointment %}
                 <div class="mt-4 rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
-                    <div class="font-semibold text-slate-950">{{ next_appointment.service.name }}</div>
-                    <div class="mt-1 text-sm text-slate-600">{{ next_appointment.start_at|date:"d.m.Y H:i" }} · {{ next_appointment.barber.name }}</div>
+                    <div class="font-semibold text-slate-950">{{ upcoming_appointment.client.name }}</div>
+                    <div class="mt-1 text-sm text-slate-600">{{ upcoming_appointment.start_at|date:"d.m.Y H:i" }} · {{ upcoming_appointment.service.name }}</div>
                 </div>
             {% else %}
                 <p class="mt-4 text-sm text-slate-500">Будущие записи не запланированы.</p>
             {% endif %}
 
-            <div class="mt-5 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Последний визит</div>
-            {% if last_appointment %}
+            <div class="mt-5 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Последний завершенный визит</div>
+            {% if last_completed_appointment %}
                 <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                    <div class="font-semibold text-slate-950">{{ last_appointment.service.name }}</div>
-                    <div class="mt-1 text-sm text-slate-600">{{ last_appointment.start_at|date:"d.m.Y H:i" }} · {{ last_appointment.barber.name }}</div>
+                    <div class="font-semibold text-slate-950">{{ last_completed_appointment.client.name }}</div>
+                    <div class="mt-1 text-sm text-slate-600">{{ last_completed_appointment.start_at|date:"d.m.Y H:i" }} · {{ last_completed_appointment.service.name }}</div>
                 </div>
             {% else %}
-                <p class="mt-3 text-sm text-slate-500">Завершенные визиты пока не зафиксированы.</p>
+                <p class="mt-3 text-sm text-slate-500">Завершенные записи пока не зафиксированы.</p>
             {% endif %}
         </section>
     </div>
@@ -92,15 +100,17 @@
         <section class="crm-panel overflow-hidden">
             <div class="border-b border-slate-100 px-6 py-5">
                 <div class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">История</div>
-                <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Лента посещений</h3>
+                <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Лента записей</h3>
             </div>
 
             <div class="divide-y divide-slate-100">
                 {% for a in appointments %}
                     <div class="flex flex-col gap-3 px-6 py-5 md:flex-row md:items-start md:justify-between">
                         <div>
-                            <div class="text-sm font-semibold text-slate-950">{{ a.service.name }}</div>
-                            <div class="mt-1 text-sm text-slate-600">{{ a.start_at|date:"d.m.Y H:i" }} · {{ a.barber.name }}</div>
+                            <div class="text-sm font-semibold text-slate-950">
+                                <a href="{% url 'client_detail' a.client.id %}" class="transition hover:text-teal-700">{{ a.client.name }}</a>
+                            </div>
+                            <div class="mt-1 text-sm text-slate-600">{{ a.start_at|date:"d.m.Y H:i" }} · {{ a.service.name }}</div>
                             {% if a.comment %}
                                 <div class="mt-2 text-sm text-slate-500">{{ a.comment }}</div>
                             {% endif %}
@@ -119,7 +129,7 @@
                         </div>
                     </div>
                 {% empty %}
-                    <div class="px-6 py-12 text-center text-sm text-slate-500">Нет посещений</div>
+                    <div class="px-6 py-12 text-center text-sm text-slate-500">История записей пока отсутствует.</div>
                 {% endfor %}
             </div>
         </section>

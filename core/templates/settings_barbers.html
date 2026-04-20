@@ -33,8 +33,15 @@
             {% for barber in barbers %}
                 <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <div class="font-semibold text-slate-900">{{ barber.name }}</div>
-                        <div class="mt-1 text-sm text-slate-500">Комиссия: {{ barber.commission_percent }}%</div>
+                        <div class="font-semibold text-slate-900">
+                            <a href="{% url 'barber_detail' barber.id %}" class="transition hover:text-teal-700">{{ barber.name }}</a>
+                        </div>
+                        <div class="mt-1 text-sm text-slate-500">
+                            Комиссия: {{ barber.commission_percent }}%
+                            {% if barber.fixed_salary_kzt %}
+                                · Фикс: {{ barber.fixed_salary_kzt }} ₸ / месяц
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="flex flex-wrap gap-2">
