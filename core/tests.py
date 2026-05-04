@@ -1,4 +1,5 @@
 from django.core import mail
+from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.test import Client as DjangoClient, RequestFactory, TestCase
 from django.test.utils import override_settings
@@ -15,6 +16,9 @@ from .terminology import get_shop_labels
 
 
 class TerminologyTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_dentistry_labels_are_applied(self):
         user = User.objects.create_user(username="dentist", password="12345678")
         shop = Shop.objects.create(
@@ -31,6 +35,9 @@ class TerminologyTests(TestCase):
 
 
 class CurrentShopContextProcessorTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_context_uses_authenticated_users_shop(self):
         user = User.objects.create_user(username="owner", password="12345678")
         shop = Shop.objects.create(owner=user, name="Focus CRM")
@@ -47,6 +54,9 @@ class CurrentShopContextProcessorTests(TestCase):
 
 
 class DashboardOverviewTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_dashboard_overview_shows_business_metrics(self):
         user = User.objects.create_user(username="owner2", password="12345678")
         shop = Shop.objects.create(owner=user, name="Studio Flow")
@@ -93,6 +103,9 @@ class DashboardOverviewTests(TestCase):
 
 
 class AuthenticationFlowTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_register_creates_inactive_user_and_sends_activation_email(self):
         response = DjangoClient().post(
             "/register/",
@@ -157,12 +170,81 @@ class AuthenticationFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Восстановление пароля", mail.outbox[0].subject)
 
+    @patch("core.views.send_activation_email")
+    def test_register_does_not_leak_internal_email_error_details(self, mock_send_activation_email):
+        mock_send_activation_email.side_effect = Exception("smtp://internal-host-secret")
+
+        response = DjangoClient().post(
+            "/register/",
+            {
+                "email": "secure-owner@example.com",
+                "username": "secure-owner",
+                "shop_name": "Secure Studio",
+                "industry_type": Shop.IndustryType.DENTISTRY,
+                "password1": "Strongpass123!",
+                "password2": "Strongpass123!",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Не удалось отправить письмо подтверждения")
+        self.assertNotContains(response, "smtp://internal-host-secret")
+
+    def test_login_rate_limit_blocks_excessive_attempts(self):
+        User.objects.create_user(
+            username="rate-user",
+            email="rate@example.com",
+            password="Strongpass123!",
+            is_active=True,
+        )
+        client = DjangoClient()
+
+        for _ in range(5):
+            client.post(
+                reverse("login"),
+                {"username": "rate-user", "password": "wrong-password"},
+            )
+
+        response = client.post(
+            reverse("login"),
+            {"username": "rate-user", "password": "wrong-password"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Слишком много попыток")
+
+    def test_password_reset_rate_limit_blocks_excessive_attempts(self):
+        User.objects.create_user(
+            username="reset-limit-user",
+            email="reset-limit@example.com",
+            password="Strongpass123!",
+            is_active=True,
+        )
+        client = DjangoClient()
+
+        for _ in range(5):
+            client.post(reverse("password_reset"), {"email": "reset-limit@example.com"})
+
+        response = client.post(
+            reverse("password_reset"),
+            {"email": "reset-limit@example.com"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Слишком много попыток")
+
 
 @override_settings(
     GOOGLE_OAUTH_CLIENT_ID="google-client-id",
     GOOGLE_OAUTH_CLIENT_SECRET="google-client-secret",
 )
 class GoogleAuthTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_google_auth_start_redirects_to_google(self):
         response = DjangoClient().get(reverse("google_auth_start"))
 
@@ -248,6 +330,9 @@ class GoogleAuthTests(TestCase):
 
 
 class AccessControlTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_expired_trial_redirects_to_access_page(self):
         user = User.objects.create_user(username="expired-owner", password="12345678")
         shop = Shop.objects.create(
@@ -294,6 +379,9 @@ class AccessControlTests(TestCase):
 
 
 class ClientDetailTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_client_detail_updates_profile(self):
         user = User.objects.create_user(username="owner3", password="12345678")
         shop = Shop.objects.create(owner=user, name="Client Hub")
@@ -321,6 +409,9 @@ class ClientDetailTests(TestCase):
 
 
 class AppointmentStatusTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_can_mark_appointment_as_no_show(self):
         user = User.objects.create_user(username="owner4", password="12345678")
         shop = Shop.objects.create(owner=user, name="Status Lab")
@@ -384,6 +475,9 @@ class AppointmentStatusTests(TestCase):
 
 
 class BusinessSettingsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_profile_route_is_available(self):
         user = User.objects.create_user(username="owner5-profile", password="12345678")
         shop = Shop.objects.create(owner=user, name="Profile Route", industry_type=Shop.IndustryType.BARBERSHOP)
@@ -459,6 +553,9 @@ class BusinessSettingsTests(TestCase):
 
 
 class ClientListLogicTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_last_visit_ignores_future_and_no_show(self):
         user = User.objects.create_user(username="owner6", password="12345678")
         shop = Shop.objects.create(owner=user, name="Clients Logic")
@@ -516,6 +613,9 @@ class ClientListLogicTests(TestCase):
 
 
 class ServiceManagementTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_can_edit_and_delete_unused_service(self):
         user = User.objects.create_user(username="owner7", password="12345678")
         shop = Shop.objects.create(owner=user, name="Service Lab")
@@ -533,12 +633,28 @@ class ServiceManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(service.name, "New Service")
 
-        response = client_http.get(f"/settings/services/delete/{service.id}/", follow=True)
+        response = client_http.post(f"/settings/services/delete/{service.id}/", follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Service.objects.filter(id=service.id).exists())
 
+    def test_delete_service_rejects_get_request(self):
+        user = User.objects.create_user(username="owner7-get", password="12345678")
+        shop = Shop.objects.create(owner=user, name="Service Lab")
+        service = Service.objects.create(shop=shop, name="Old Service", duration_min=60, price_kzt=5000)
+
+        client_http = DjangoClient()
+        client_http.login(username="owner7-get", password="12345678")
+
+        response = client_http.get(f"/settings/services/delete/{service.id}/")
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(Service.objects.filter(id=service.id).exists())
+
 
 class PaymentMethodSettingsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_can_add_payment_method(self):
         user = User.objects.create_user(username="owner-payments", password="12345678")
         shop = Shop.objects.create(owner=user, name="Methods Hub")
@@ -597,7 +713,7 @@ class PaymentMethodSettingsTests(TestCase):
 
         client_http = DjangoClient()
         client_http.login(username="owner-payments-protected", password="12345678")
-        response = client_http.get(
+        response = client_http.post(
             reverse("delete_payment_method", args=[payment_method.id]),
             follow=True,
         )
@@ -608,6 +724,9 @@ class PaymentMethodSettingsTests(TestCase):
 
 
 class FinanceDashboardTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_finance_dashboard_uses_custom_payment_method_labels(self):
         user = User.objects.create_user(username="finance-owner", password="12345678")
         shop = Shop.objects.create(owner=user, name="Finance Hub")
@@ -640,6 +759,9 @@ class FinanceDashboardTests(TestCase):
 
 
 class StaffReportTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_report_includes_commission_and_fixed_salary_for_period(self):
         user = User.objects.create_user(username="owner-report", password="12345678")
         shop = Shop.objects.create(owner=user, name="Team Metrics")

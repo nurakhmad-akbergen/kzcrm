@@ -7,8 +7,10 @@ from urllib import error, parse, request as urllib_request
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
@@ -22,6 +24,7 @@ from django.utils import timezone
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.http import require_POST
 from .forms import (
     AccessExtensionForm,
     AppointmentStatusForm,
@@ -44,6 +47,12 @@ logger = logging.getLogger(__name__)
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+AUTH_RATE_LIMIT_WINDOW = 300
+AUTH_RATE_LIMITS = {
+    "login": 5,
+    "register": 5,
+    "password_reset": 5,
+}
 
 
 DEFAULT_PAYMENT_METHOD_NAMES = ["Наличные", "Kaspi", "Перевод", "Долг"]
@@ -66,6 +75,67 @@ def google_oauth_configured():
     return bool(
         settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET
     )
+
+
+def get_client_ip(request):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "unknown")
+
+
+def auth_rate_limit_key(scope, request):
+    return f"auth-rate-limit:{scope}:{get_client_ip(request)}"
+
+
+def is_auth_rate_limited(scope, request):
+    key = auth_rate_limit_key(scope, request)
+    count = cache.get(key, 0)
+    return count >= AUTH_RATE_LIMITS[scope]
+
+
+def record_auth_attempt(scope, request):
+    key = auth_rate_limit_key(scope, request)
+    if not cache.add(key, 1, AUTH_RATE_LIMIT_WINDOW):
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, AUTH_RATE_LIMIT_WINDOW)
+
+
+def reset_auth_attempts(scope, request):
+    cache.delete(auth_rate_limit_key(scope, request))
+
+
+def add_auth_rate_limit_error(form):
+    form.add_error(None, "Слишком много попыток. Подождите несколько минут и попробуйте снова.")
+    return form
+
+
+class RateLimitedLoginView(auth_views.LoginView):
+    def post(self, request, *args, **kwargs):
+        if is_auth_rate_limited("login", request):
+            form = self.get_form()
+            return self.form_invalid(add_auth_rate_limit_error(form))
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        reset_auth_attempts("login", self.request)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        record_auth_attempt("login", self.request)
+        return super().form_invalid(form)
+
+
+class RateLimitedPasswordResetView(auth_views.PasswordResetView):
+    def post(self, request, *args, **kwargs):
+        if is_auth_rate_limited("password_reset", request):
+            form = self.get_form()
+            return self.form_invalid(add_auth_rate_limit_error(form))
+
+        record_auth_attempt("password_reset", request)
+        return super().post(request, *args, **kwargs)
 
 
 def build_google_redirect_uri(request):
@@ -655,13 +725,16 @@ def profile_settings(request):
 
 
 @login_required
+@require_POST
 def delete_barber(request, barber_id):
     shop = request.user.shop
     barber = get_object_or_404(Barber, id=barber_id, shop=shop)
 
-    barber.delete()
-
-    messages.success(request, "Мастер удалён")
+    try:
+        barber.delete()
+        messages.success(request, "Мастер удалён")
+    except ProtectedError:
+        messages.error(request, "Нельзя удалить мастера, у которого уже есть связанные записи")
     return redirect("barbers_settings")
 
 
@@ -700,6 +773,7 @@ def edit_service(request, service_id):
 
 
 @login_required
+@require_POST
 def delete_service(request, service_id):
     shop = request.user.shop
     service = get_object_or_404(Service, id=service_id, shop=shop)
@@ -1213,6 +1287,7 @@ def payment_methods_settings(request):
 
 
 @login_required
+@require_POST
 def delete_payment_method(request, method_id):
     shop = request.user.shop
     payment_method = get_object_or_404(PaymentMethod, id=method_id, shop=shop)
@@ -1228,6 +1303,12 @@ def delete_payment_method(request, method_id):
     
 def register(request):
     if request.method == "POST":
+        if is_auth_rate_limited("register", request):
+            form = RegisterForm(request.POST)
+            add_auth_rate_limit_error(form)
+            return render(request, "register.html", {"form": form})
+
+        record_auth_attempt("register", request)
         form = RegisterForm(request.POST)
         if form.is_valid():
             try:
@@ -1264,9 +1345,10 @@ def register(request):
                 logger.exception("Failed to send activation email during registration")
                 form.add_error(
                     "email",
-                    f"Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз. Ошибка: {exc}"
+                    "Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз."
                 )
             else:
+                reset_auth_attempts("register", request)
                 return redirect("activation_sent")
     else:
         form = RegisterForm()

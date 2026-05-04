@@ -40,9 +40,12 @@
                         <a href="{% url 'edit_service' service.id %}" class="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
                             Редактировать
                         </a>
-                        <a href="{% url 'delete_service' service.id %}" class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100" onclick="return confirm('Удалить услугу?');">
-                            Удалить
-                        </a>
+                        <form method="post" action="{% url 'delete_service' service.id %}" onsubmit="return confirm('Удалить услугу?');">
+                            {% csrf_token %}
+                            <button class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100">
+                                Удалить
+                            </button>
+                        </form>
                     </div>
                 </div>
             {% empty %}

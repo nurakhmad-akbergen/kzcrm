@@ -13,6 +13,8 @@ from core.forms import (
 )
 
 from core.views import (
+    RateLimitedLoginView,
+    RateLimitedPasswordResetView,
     activate_account,
     activation_sent,
     google_auth_callback,
@@ -55,7 +57,7 @@ urlpatterns = [
     path("auth/google/signup/", google_signup, name="google_signup"),
     path(
         "login/",
-        auth_views.LoginView.as_view(
+        RateLimitedLoginView.as_view(
             template_name="login_plain.html",
             authentication_form=EmailOrUsernameAuthenticationForm,
         ),
@@ -66,7 +68,7 @@ urlpatterns = [
     path("activate/<uidb64>/<token>/", activate_account, name="activate_account"),
     path(
         "password-reset/",
-        auth_views.PasswordResetView.as_view(
+        RateLimitedPasswordResetView.as_view(
             template_name="password_reset_form.html",
             email_template_name="emails/password_reset_email.txt",
             subject_template_name="emails/password_reset_subject.txt",

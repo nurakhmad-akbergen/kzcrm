@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Отчет по безопасности KZCRMS</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.45;
+      color: #111827;
+      margin: 36px;
+      font-size: 12pt;
+    }
+    h1, h2, h3 {
+      color: #0f172a;
+    }
+    h1 {
+      font-size: 22pt;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 16pt;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+    h3 {
+      font-size: 13pt;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+    p {
+      margin: 8px 0;
+    }
+    ul {
+      margin: 8px 0 8px 20px;
+    }
+    li {
+      margin: 4px 0;
+    }
+    pre {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Courier New", monospace;
+      font-size: 10pt;
+    }
+    .muted {
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <h1>Отчет по безопасности проекта KZCRMS</h1>
+  <p class="muted">
+    Проект: KZCRMS<br>
+    Технологический стек: Django 3.2, Tailwind CSS, Railway, Resend, Google OAuth<br>
+    Назначение документа: описание выполненного аудита безопасности и реализованных защитных механизмов для отчета по практике.
+  </p>
+
+  <h2>1. Цель работы</h2>
+  <p>
+    Целью работы являлась проверка веб-приложения KZCRMS на наличие типовых проблем безопасности
+    и последующее устранение наиболее критичных рисков до вывода продукта на этап работы с реальными клиентами.
+  </p>
+
+  <h2>2. Выявленные проблемы безопасности</h2>
+  <h3>2.1. Удаление данных через GET-запросы</h3>
+  <p>
+    В системе операции удаления сотрудников, услуг и способов оплаты выполнялись через обычные ссылки.
+    Это создавало риск CSRF-атаки на разрушение данных: авторизованного пользователя можно было
+    заставить перейти по вредоносной ссылке и удалить сущность без явного подтверждения на серверной стороне.
+  </p>
+
+  <h3>2.2. Возможность запуска production-конфигурации с тестовым SECRET_KEY</h3>
+  <p>
+    В конфигурации проекта использовался fallback-ключ разработки. Если окружение было настроено неполно,
+    приложение могло стартовать в production с небезопасным значением SECRET_KEY.
+  </p>
+
+  <h3>2.3. Утечка внутренних ошибок пользователю</h3>
+  <p>
+    При сбое отправки письма подтверждения регистрации пользователю возвращался текст исключения.
+    Это могло раскрывать внутренние детали SMTP/API-инфраструктуры, сетевые адреса и техническую конфигурацию.
+  </p>
+
+  <h3>2.4. Отсутствие ограничения попыток на чувствительных маршрутах</h3>
+  <p>
+    Формы логина, регистрации и восстановления пароля были доступны без rate limiting.
+    Это повышало риск brute force, enumeration и злоупотребления почтовыми сценариями.
+  </p>
+
+  <h3>2.5. Недостаточно жёсткие production-настройки Django</h3>
+  <p>
+    В проекте использовались базовые secure cookies, но отсутствовала часть важных защитных параметров:
+    принудительный HTTPS-redirect, HSTS и дополнительные безопасные заголовки.
+  </p>
+
+  <h2>3. Реализованные меры защиты</h2>
+  <h3>3.1. Перевод destructive actions на POST</h3>
+  <p>
+    Для операций удаления были внедрены серверные ограничения: методы удаления теперь доступны только через POST,
+    а формы в интерфейсе снабжены CSRF-токенами.
+  </p>
+
+  <pre>
+core/views.py
+
+@login_required
+@require_POST
+def delete_barber(request, barber_id):
+    ...
+
+@login_required
+@require_POST
+def delete_service(request, service_id):
+    ...
+
+@login_required
+@require_POST
+def delete_payment_method(request, method_id):
+    ...
+  </pre>
+
+  <p>
+    Интерфейс также был обновлен: вместо ссылок удаления теперь используются HTML-формы с POST.
+  </p>
+
+  <pre>
+core/templates/settings_services.html
+core/templates/settings_barbers.html
+core/templates/settings_payment_methods.html
+
+&lt;form method="post" action="{% url 'delete_service' service.id %}" ...&gt;
+    {% csrf_token %}
+    &lt;button&gt;Удалить&lt;/button&gt;
+&lt;/form&gt;
+  </pre>
+
+  <h3>3.2. Защита production от небезопасного SECRET_KEY</h3>
+  <p>
+    В конфигурации добавлена проверка: если приложение запускается не в DEBUG-режиме и SECRET_KEY
+    не задан явно, система аварийно завершает запуск с ошибкой конфигурации.
+  </p>
+
+  <pre>
+config/settings.py
+
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-key")
+
+if not DEBUG and SECRET_KEY == "django-insecure-dev-only-key":
+    raise ImproperlyConfigured("SECRET_KEY must be configured in production.")
+  </pre>
+
+  <h3>3.3. Скрытие внутренних ошибок от пользователя</h3>
+  <p>
+    В логах ошибка по-прежнему фиксируется для разработчика, но на фронтенд выводится только безопасное и
+    понятное сообщение без внутренних технических деталей.
+  </p>
+
+  <pre>
+core/views.py
+
+except Exception as exc:
+    logger.exception("Failed to send activation email during registration")
+    form.add_error(
+        "email",
+        "Не удалось отправить письмо подтверждения. Проверь настройки почты и попробуй ещё раз."
+    )
+  </pre>
+
+  <h3>3.4. Реализация базового rate limiting</h3>
+  <p>
+    Для защиты от brute force и abuse была реализована базовая система ограничения попыток по IP-адресу.
+    Лимит действует на логин, регистрацию и восстановление пароля. После превышения допустимого числа попыток
+    пользователь получает сообщение о временной блокировке.
+  </p>
+
+  <pre>
+core/views.py
+
+AUTH_RATE_LIMIT_WINDOW = 300
+AUTH_RATE_LIMITS = {
+    "login": 5,
+    "register": 5,
+    "password_reset": 5,
+}
+
+def get_client_ip(request):
+    ...
+
+def is_auth_rate_limited(scope, request):
+    ...
+
+class RateLimitedLoginView(auth_views.LoginView):
+    ...
+
+class RateLimitedPasswordResetView(auth_views.PasswordResetView):
+    ...
+  </pre>
+
+  <p>
+    Затем новые защищенные view были подключены в маршруты:
+  </p>
+
+  <pre>
+config/urls.py
+
+path("login/", RateLimitedLoginView.as_view(...), name="login")
+path("password-reset/", RateLimitedPasswordResetView.as_view(...), name="password_reset")
+  </pre>
+
+  <h3>3.5. Усиление production-настроек Django</h3>
+  <p>
+    В production-конфигурацию были добавлены дополнительные защитные параметры:
+  </p>
+
+  <ul>
+    <li>SESSION_COOKIE_SECURE</li>
+    <li>SESSION_COOKIE_HTTPONLY</li>
+    <li>CSRF_COOKIE_SECURE</li>
+    <li>CSRF_COOKIE_HTTPONLY</li>
+    <li>SECURE_SSL_REDIRECT</li>
+    <li>SECURE_HSTS_SECONDS</li>
+    <li>SECURE_HSTS_INCLUDE_SUBDOMAINS</li>
+    <li>SECURE_HSTS_PRELOAD</li>
+    <li>SECURE_CONTENT_TYPE_NOSNIFF</li>
+    <li>X_FRAME_OPTIONS = "DENY"</li>
+    <li>REFERRER_POLICY = "same-origin"</li>
+  </ul>
+
+  <pre>
+config/settings.py
+
+if not DEBUG:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() == "true"
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+    REFERRER_POLICY = "same-origin"
+  </pre>
+
+  <h2>4. Проверка и тестирование</h2>
+  <p>
+    После внесения изменений были обновлены и расширены автоматические тесты.
+    Добавлены проверки на:
+  </p>
+  <ul>
+    <li>отсутствие утечки внутреннего текста ошибки при сбое отправки письма;</li>
+    <li>блокировку избыточных попыток логина;</li>
+    <li>блокировку злоупотребления формой сброса пароля;</li>
+    <li>запрет удаления услуги через GET;</li>
+    <li>сохранение штатной бизнес-логики после внедрения защитных механизмов.</li>
+  </ul>
+
+  <pre>
+core/tests.py
+
+def test_register_does_not_leak_internal_email_error_details(self):
+    ...
+
+def test_login_rate_limit_blocks_excessive_attempts(self):
+    ...
+
+def test_password_reset_rate_limit_blocks_excessive_attempts(self):
+    ...
+
+def test_delete_service_rejects_get_request(self):
+    ...
+  </pre>
+
+  <p>
+    Итог проверки:
+  </p>
+  <ul>
+    <li>Команда <b>manage.py check</b> выполнена успешно.</li>
+    <li>Команда <b>manage.py test core</b> выполнена успешно.</li>
+    <li>Все тесты завершились со статусом <b>OK</b>.</li>
+  </ul>
+
+  <h2>5. Итоговый результат</h2>
+  <p>
+    В результате проведенной работы безопасность проекта KZCRMS была заметно усилена.
+    Были устранены наиболее критичные риски, связанные с удалением данных, brute force, небезопасной production-конфигурацией
+    и информационными утечками через интерфейс. Реализованные изменения повышают устойчивость системы к распространенным
+    веб-угрозам и делают проект более подготовленным к использованию реальными клиентами.
+  </p>
+
+  <h2>6. Файлы, в которых были внесены изменения</h2>
+  <ul>
+    <li>config/settings.py</li>
+    <li>config/urls.py</li>
+    <li>core/views.py</li>
+    <li>core/templates/settings_services.html</li>
+    <li>core/templates/settings_barbers.html</li>
+    <li>core/templates/settings_payment_methods.html</li>
+    <li>core/tests.py</li>
+  </ul>
+
+  <h2>7. Заключение</h2>
+  <p>
+    Выполненный аудит и доработка безопасности показали, что даже небольшой SaaS-проект требует
+    системной проработки защитных механизмов. На практике были применены принципы безопасной конфигурации,
+    защиты от CSRF, ограничения атак перебора, скрытия внутренних ошибок и автоматизированной проверки внесённых изменений.
+  </p>
+</body>
+</html>
